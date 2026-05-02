@@ -504,16 +504,4 @@ A complete evaluation report should include:
 
 ---
 
-## Related Diagram
-
-Recommended diagram file:
-
-```text
-assets/agridrone-evaluation-workflow.png
-```
-
-README reference:
-
-```markdown
-![AgriDrone Evaluation Workflow](../assets/agridrone-evaluation-workflow.png)
-```
+![AgriDrone Evaluation Workflow](../assets/images/agridrone-vision-evaluation-pipeline-3-evaluation.png)

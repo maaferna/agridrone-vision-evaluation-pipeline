@@ -17,27 +17,68 @@ The system enables direct comparison between standard YOLO inference and SAHI-ba
 
 ## 🛠️ Technology Stack
 
-The project leverages the following technologies and tools:
+The stack is intentionally separated by role. The **core runtime pipeline** focuses on YOLO/SAHI inference, COCO evaluation, geospatial metadata processing, and GIS-ready artifact generation. Other tools are documented as supporting, auxiliary, or external workflow tools rather than core system dependencies.
 
-| **Category**            | **Technologies**                                                                 |
-|-------------------------|---------------------------------------------------------------------------------|
-| **Programming Language**| ![Python](https://img.shields.io/badge/Python-3.9%2B-blue)                     |
-| **Machine Learning**    | ![PyTorch](https://img.shields.io/badge/PyTorch-Deep%20Learning-red)           |
-| **Computer Vision**     | ![YOLO](https://img.shields.io/badge/YOLO-Object%20Detection-yellow)           |
-|                         | ![SAHI](https://img.shields.io/badge/SAHI-Slicing%20Inference-green)           |
-|                         | ![OpenCV](https://img.shields.io/badge/OpenCV-Image%20Processing-blueviolet)   |
-| **Evaluation**          | ![pycocotools](https://img.shields.io/badge/pycocotools-COCO%20Metrics-orange) |
-| **Data Processing**     | ![NumPy](https://img.shields.io/badge/NumPy-Array%20Computations-lightgrey)    |
-|                         | ![Pandas](https://img.shields.io/badge/Pandas-Data%20Analysis-yellowgreen)     |
-| **Visualization**       | ![Matplotlib](https://img.shields.io/badge/Matplotlib-Data%20Visualization-blue)|
-| **Geospatial Processing**| ![Rasterio](https://img.shields.io/badge/Rasterio-Geospatial%20Data-brightgreen)|
-|                         | ![GeoJSON](https://img.shields.io/badge/GeoJSON-Geospatial%20Format-lightblue) |
-|                         | ![Shapefile](https://img.shields.io/badge/Shapefile-GIS%20Data-red)            |
-| **Infrastructure**      | ![CUDA](https://img.shields.io/badge/CUDA-GPU%20Acceleration-green)            |
+### Core Runtime Stack
+
+| Area | Technologies |
+|---|---|
+| **Programming Language** | ![Python](https://img.shields.io/badge/Python-3.9%2B-blue) |
+| **Object Detection** | ![Ultralytics YOLO](https://img.shields.io/badge/Ultralytics%20YOLO-Object%20Detection-yellow) |
+| **Sliced Inference** | ![SAHI](https://img.shields.io/badge/SAHI-Sliced%20Inference-green) |
+| **Deep Learning Runtime** | ![PyTorch](https://img.shields.io/badge/PyTorch-Deep%20Learning-red) |
+| **Image Processing** | ![OpenCV](https://img.shields.io/badge/OpenCV-Image%20Processing-blueviolet) ![Pillow](https://img.shields.io/badge/Pillow-Image%20IO-lightblue) |
+| **Evaluation** | ![pycocotools](https://img.shields.io/badge/pycocotools-COCO%20Metrics-orange) |
+| **Numerical Processing** | ![NumPy](https://img.shields.io/badge/NumPy-Array%20Computations-lightgrey) |
+| **Visualization** | ![Matplotlib](https://img.shields.io/badge/Matplotlib-Metrics%20Plots-blue) |
+| **Runtime Acceleration** | ![CUDA](https://img.shields.io/badge/CUDA-GPU%20Acceleration-green) |
+
+### Geospatial Processing & GIS Outputs
+
+| Area | Technologies / Formats |
+|---|---|
+| **Metadata Handling** | EXIF / GPS metadata extraction |
+| **Coordinate Transformation** | ![PyProj](https://img.shields.io/badge/PyProj-Coordinate%20Transforms-green) |
+| **Geospatial Data Processing** | ![Rasterio](https://img.shields.io/badge/Rasterio-Geospatial%20Data-brightgreen) |
+| **Spatial Output Formats** | ![GeoJSON](https://img.shields.io/badge/GeoJSON-Spatial%20Format-lightblue) ![Shapefile](https://img.shields.io/badge/Shapefile-GIS%20Vector%20Data-red) |
+| **GIS Compatibility** | QGIS-compatible CSV / GeoJSON / Shapefile outputs |
+
+### Supporting Reporting & Data Artifacts
+
+These tools support tabular summaries, reports, and generated artifacts. They are not the central ML runtime.
+
+| Area | Technologies / Formats |
+|---|---|
+| **Tabular Reporting** | Pandas, CSV |
+| **Structured Artifacts** | JSON |
+| **Documentation Source** | Markdown |
+| **Metric Visualizations** | PNG plots, curve images, confusion matrices |
+
+### Auxiliary Dataset Diagnostics / Experiment Workflow
+
+These tools are part of the broader experimentation and dataset improvement workflow. They should be understood as supporting tools, not required runtime components of the core inference pipeline.
+
+| Area | Tools |
+|---|---|
+| **Dataset Diagnostics** | FiftyOne, embeddings analysis, UMAP, mistakenness / spurious detection review |
+| **Annotation / Dataset Preparation** | CVAT, Roboflow |
+| **Experiment Tracking / Review** | ClearML |
+| **Dataset Organization** | Dataset-versioned experimentation workflow using structured releases and validation folders |
+
+### Documentation Automation Support
+
+These tools apply specifically to the validation-artifact reporting module. They should not be interpreted as core computer vision dependencies.
+
+| Area | Tools |
+|---|---|
+| **Automation Scripts** | Bash |
+| **Artifact Linking** | Linux filesystem, symbolic links |
+| **PDF Rendering** | Pandoc, LaTeX / xelatex |
+| **Environment Support** | Linux / Ubuntu, Docker for reproducible rendering environments |
+
+> **Scope note:** Tools such as Pandoc, LaTeX, Bash, symbolic links, FiftyOne, ClearML, CVAT, and Roboflow are documented because they support experimentation, dataset diagnostics, or reporting workflows. The core technical system remains the YOLO/SAHI computer vision pipeline with COCO evaluation and geospatial artifact generation.
 
 ---
-
-
 
 ## 🚀 Problem Statement
 
@@ -56,16 +97,62 @@ This project addresses these challenges by building a reproducible evaluation pi
 
 ## 🎯 Main Objectives
 
+### Core Pipeline Objectives
+
 - Execute YOLO inference on high-resolution drone images.
-- Support SAHI slicing inference for improved detection of small objects.
+- Support SAHI slicing inference for improved detection of small objects in 4K imagery.
 - Export normalized YOLO predictions.
 - Convert YOLO ground truth and predictions into COCO format.
 - Evaluate model performance using `pycocotools`.
 - Generate global and per-class metrics.
-- Produce CSV, JSON, and visualization outputs for reporting.
+- Produce JSON, CSV, and visualization outputs for model evaluation.
 - Extract GPS/EXIF metadata from drone images.
 - Generate geospatial outputs such as GeoJSON, CSV, and shapefiles.
-- Provide a reproducible workflow for model benchmarking and applied research.
+- Provide a reproducible workflow for object detection benchmarking and applied agricultural research.
+
+### Supporting Experimentation and Reporting Objectives
+
+- Organize experiments using dataset-versioned folders and structured validation outputs.
+- Support best-model review using validation metrics such as mAP and F1 when available.
+- Generate validation artifacts such as confusion matrices, metric curves, prediction examples, and JSON summaries.
+- Link validation artifacts into Markdown documentation using symbolic links when documentation automation is required.
+- Render Markdown documentation into PDF using Pandoc and LaTeX as an auxiliary reporting workflow.
+- Support dataset curation and diagnostics using tools such as FiftyOne, embeddings analysis, mistakenness review, and spurious detection inspection when applicable.
+
+> **Scope clarification:** Dataset versioning, Pandoc/LaTeX rendering, symbolic links, FiftyOne, ClearML, CVAT, and Roboflow are treated as supporting experimentation or documentation workflows. They are not presented as core runtime services of the inference/evaluation engine.
+
+---
+
+## 🧩 Specialized Technical Pipelines
+
+The project includes specialized sub-pipelines. Some are part of the core runtime workflow, while others support experimentation, dataset diagnostics, or documentation automation.
+
+| Pipeline | Purpose | Documentation |
+|---|---|---|
+| **YOLO / SAHI Inference Pipeline** | Runs direct YOLO or SAHI sliced inference over images, directories, and video sources. | `docs/methodology.md` |
+| **COCO Evaluation Pipeline** | Converts YOLO predictions and ground truth into COCO format and evaluates AP50, AP50:95, Precision, Recall, and F1. | `docs/evaluation.md` |
+| **Georeferenced Detection & Shapefile Generation Pipeline** | Converts detections into GIS-ready GeoJSON, CSV, and shapefiles using GPS/EXIF metadata. | `docs/georeferenced-detection-shapefile-pipeline.md` |
+| **Validation Artifact Reporting Pipeline** | Links YOLO validation artifacts into Markdown reports and renders reproducible PDFs with Pandoc and LaTeX. | `docs/validation-artifact-reporting-pipeline.md` |
+| **Dataset Curation & Diagnostics Workflow** | Auxiliary workflow for dataset quality review using validation analysis, embeddings, FiftyOne, and error inspection when applicable. | `docs/methodology.md` |
+
+---
+
+## 📄 Reproducible Validation Reporting
+
+This is an auxiliary documentation automation workflow that links YOLO validation artifacts—such as confusion matrices, precision-recall curves, F1 curves, prediction examples, and JSON metric summaries—into Markdown-based technical reports.
+
+Instead of duplicating experimental outputs, the workflow uses symbolic links to preserve a single source of truth across dataset versions and validation runs. Markdown documentation can then be rendered into publication-ready PDF reports using Pandoc and LaTeX.
+
+This support module can be used for:
+
+- dataset-versioned validation reports
+- symbolic linking of validation artifacts
+- Markdown documentation enrichment
+- PDF rendering through Pandoc and LaTeX
+- reproducible experiment documentation
+- artifact traceability without file duplication
+
+See: `docs/validation-artifact-reporting-pipeline.md`
 
 ---
 
@@ -126,9 +213,15 @@ The system evaluates predictions using COCO metrics with `pycocotools`.
 
 The system generates JSON reports, CSV files, and plots for global and per-class model performance.
 
-### Step 9: Final Outputs
+### Step 9: Validation Artifact Linking and Documentation Rendering
 
-The final result is a reproducible evaluation package containing predictions, geospatial files, COCO artifacts, metrics, and visual reports.
+When report generation is required, the auxiliary reporting automation module links validation artifacts such as confusion matrices, metric curves, prediction examples, and JSON summaries into Markdown documentation using symbolic links.
+
+The enriched Markdown documentation can then be rendered into PDF using Pandoc and LaTeX. This is a reporting/documentation layer, not a core inference dependency.
+
+### Step 10: Final Outputs
+
+The final result is a reproducible evaluation package containing predictions, geospatial files, COCO artifacts, metrics, and visual reports. When the auxiliary reporting workflow is used, Markdown and PDF documentation can also be generated.
 
 ---
 
