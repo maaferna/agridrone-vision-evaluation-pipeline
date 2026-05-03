@@ -4,20 +4,6 @@
 
 ---
 
-## 🌟 Overview
-
-**AgriDrone Vision Evaluation Pipeline** is a computer vision and machine learning evaluation system designed to process high-resolution drone imagery in agricultural environments. The project integrates YOLO-based object detection, SAHI slicing inference, geospatial metadata extraction, standardized COCO evaluation metrics, and automated reporting.
-
-The pipeline was designed to support reproducible experimentation with object detection models applied to aerial agricultural imagery, where objects of interest may be small, partially occluded, visually ambiguous, or distributed across large 4K images.
-
-The system enables direct comparison between standard YOLO inference and SAHI-based sliced inference, helping evaluate how different inference strategies affect detection quality, recall, precision, and model robustness in real-world drone image conditions.
-
----
-
-
-## 🛠️ Technology Stack
-
-The stack is intentionally separated by role. The **core runtime pipeline** focuses on YOLO/SAHI inference, COCO evaluation, geospatial metadata processing, and GIS-ready artifact generation. Other tools are documented as supporting, auxiliary, or external workflow tools rather than core system dependencies.
 
 ### Core Runtime Stack
 
@@ -42,6 +28,39 @@ The stack is intentionally separated by role. The **core runtime pipeline** focu
 | **Geospatial Data Processing** | ![Rasterio](https://img.shields.io/badge/Rasterio-Geospatial%20Data-brightgreen) |
 | **Spatial Output Formats** | ![GeoJSON](https://img.shields.io/badge/GeoJSON-Spatial%20Format-lightblue) ![Shapefile](https://img.shields.io/badge/Shapefile-GIS%20Vector%20Data-red) |
 | **GIS Compatibility** | QGIS-compatible CSV / GeoJSON / Shapefile outputs |
+
+---
+
+## 🌟 Overview
+
+**AgriDrone Vision Evaluation Pipeline** is a computer vision and machine learning evaluation system designed to process high-resolution drone imagery in agricultural environments. The project integrates YOLO-based object detection, SAHI slicing inference, geospatial metadata extraction, standardized COCO evaluation metrics, and automated reporting.
+
+The pipeline was designed to support reproducible experimentation with object detection models applied to aerial agricultural imagery, where objects of interest may be small, partially occluded, visually ambiguous, or distributed across large 4K images.
+
+The system enables direct comparison between standard YOLO inference and SAHI-based sliced inference, helping evaluate how different inference strategies affect detection quality, recall, precision, and model robustness in real-world drone image conditions.
+
+---
+
+## 🖼️ Visual Overview
+
+### Poster 1: Pipeline Overview
+![Pipeline Overview](assets/images/agridrone-vision-evaluation-pipeline1.png)
+
+### Poster 2: System Architecture
+![System Architecture](assets/images/agridrone-vision-evaluation-pipeline2.png)
+
+### Poster 3: Evaluation Pipeline
+![Pipeline Evaluation](assets/images/agridrone-vision-evaluation-pipeline-3-evaluation.png)
+
+### Poster 4: Shapefile Generation
+![Shapefile Generation](assets/images/agridrone-vision-evaluation-pipeline-4-shapefile-generation.png)
+
+---
+
+
+## 🛠️ Technology Stack
+
+The stack is intentionally separated by role. The **core runtime pipeline** focuses on YOLO/SAHI inference, COCO evaluation, geospatial metadata processing, and GIS-ready artifact generation. Other tools are documented as supporting, auxiliary, or external workflow tools rather than core system dependencies.
 
 ### Supporting Reporting & Data Artifacts
 
