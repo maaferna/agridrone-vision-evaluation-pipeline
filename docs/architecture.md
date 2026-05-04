@@ -79,6 +79,7 @@ Main modules:
 
 - YOLO Inference Service
 - SAHI Sliced Inference Service
+- YOLO / SAHI Inference and Geospatial Export Service
 - Prediction Normalization Module
 - Geo-Metadata Extraction Module
 - COCO Conversion Module
@@ -189,6 +190,35 @@ Outputs:
 Technical concern:
 
 SAHI can improve recall for small objects, but it increases computational cost and introduces sensitivity to overlap settings, NMS behavior, and duplicate detections near slice boundaries.
+
+---
+
+### YOLO / SAHI Inference and Geospatial Export Service
+
+**Responsibility:** Execute operational inference and export structured visual, metadata, and geospatial artifacts.
+
+Inputs:
+
+- Single image or image directory
+- Trained `best.pt` model
+- `img_size`, `slice_size`, `overlap_ratio`, and confidence threshold
+- Class dictionary and class colors
+- EXIF/GPS metadata embedded in source imagery
+- Output directories
+
+Outputs:
+
+- Styled images with bounding boxes and class legends
+- Per-image prediction and metadata JSON
+- Class-level detection summaries
+- GeoJSON outputs when coordinates are available
+- QGIS-compatible CSV summaries
+- Batch summary JSON and CSV
+- Optional object crops
+
+Technical concern:
+
+This service currently combines inference, visualization, metadata extraction, and geospatial export in one operational flow. That is effective for research batch processing, but production usage would benefit from separating inference, post-processing, metadata enrichment, and export into independent service boundaries.
 
 ---
 
@@ -343,7 +373,7 @@ Reporting should preserve raw metrics and avoid hiding model weaknesses behind a
 7. Ground truth and predictions are converted to COCO format.
 8. pycocotools evaluation is executed when COCO evaluation is required.
 9. Global and per-class metrics are generated.
-10. JSON, CSV, plots, GeoJSON, and shapefiles are exported.
+10. JSON, CSV, styled images, GeoJSON, QGIS summaries, and shapefiles are exported.
 ```
 
 ---

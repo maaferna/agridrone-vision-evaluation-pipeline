@@ -44,17 +44,19 @@ The system enables direct comparison between standard YOLO inference and SAHI-ba
 
 ## 🖼️ Visual Overview
 
-### Poster 1: Pipeline Overview
+### Featured Poster: Pipeline Overview
 ![Pipeline Overview](assets/images/agridrone-vision-evaluation-pipeline1.png)
 
-### Poster 2: System Architecture
-![System Architecture](assets/images/agridrone-vision-evaluation-pipeline2.png)
+### Additional Posters
+<div align="center">
 
-### Poster 3: Evaluation Pipeline
-![Pipeline Evaluation](assets/images/agridrone-vision-evaluation-pipeline-3-evaluation.png)
+**📺 Project Posters Carousel**
 
-### Poster 4: Shapefile Generation
-![Shapefile Generation](assets/images/agridrone-vision-evaluation-pipeline-4-shapefile-generation.png)
+Explore more posters:
+
+[**Poster 2: System Architecture**](assets/images/agridrone-vision-evaluation-pipeline2.png) • [**Poster 3: Evaluation Pipeline**](assets/images/agridrone-vision-evaluation-pipeline-3-evaluation.png) • [**Poster 4: Shapefile Generation**](assets/images/agridrone-vision-evaluation-pipeline-4-shapefile-generation.png)
+
+</div>
 
 ---
 
@@ -150,10 +152,39 @@ The project includes specialized sub-pipelines. Some are part of the core runtim
 | Pipeline | Purpose | Documentation |
 |---|---|---|
 | **YOLO / SAHI Inference Pipeline** | Runs direct YOLO or SAHI sliced inference over images, directories, and video sources. | `docs/methodology.md` |
+| **YOLO / SAHI Inference and Geospatial Export Pipeline** | Executes direct YOLO or SAHI inference on agricultural drone imagery, generates styled detections, extracts EXIF/GPS metadata, converts GPS to UTM when available, and exports JSON, CSV, GeoJSON, QGIS-ready summaries, and batch outputs. | `docs/yolo-sahi-inference-geospatial-export-pipeline.md` |
 | **COCO Evaluation Pipeline** | Converts YOLO predictions and ground truth into COCO format and evaluates AP50, AP50:95, Precision, Recall, and F1. | `docs/evaluation.md` |
 | **Georeferenced Detection & Shapefile Generation Pipeline** | Converts detections into GIS-ready GeoJSON, CSV, and shapefiles using GPS/EXIF metadata. | `docs/georeferenced-detection-shapefile-pipeline.md` |
 | **Validation Artifact Reporting Pipeline** | Links YOLO validation artifacts into Markdown reports and renders reproducible PDFs with Pandoc and LaTeX. | `docs/validation-artifact-reporting-pipeline.md` |
 | **Dataset Curation & Diagnostics Workflow** | Auxiliary workflow for dataset quality review using validation analysis, embeddings, FiftyOne, and error inspection when applicable. | `docs/methodology.md` |
+
+---
+
+## 🔍 YOLO / SAHI Inference and Geospatial Export
+
+The project includes a core inference and geospatial export pipeline that operationalizes model predictions over agricultural drone imagery.
+
+This module connects direct YOLO inference, SAHI sliced inference, visual output generation, EXIF/GPS metadata extraction, UTM conversion, and GIS-compatible exports.
+
+It focuses on:
+
+- selecting the trained `best.pt` checkpoint according to the active configuration
+- processing single images, directories, or video sources
+- running direct YOLO inference or SAHI sliced inference
+- reconstructing SAHI detections into full-image coordinates
+- consolidating detections by class
+- generating styled images with bounding boxes and legends
+- extracting EXIF/GPS metadata from drone images
+- converting GPS coordinates to UTM when available
+- exporting per-image JSON metadata and predictions
+- generating GeoJSON outputs
+- producing QGIS-compatible CSV summaries
+- generating batch-level JSON and CSV summaries
+- optionally exporting object crops when enabled
+
+This service is part of the core runtime workflow because it transforms images into operational detection artifacts and geospatial outputs that can later feed evaluation, GIS analysis, shapefile generation, and technical reporting.
+
+See: `docs/yolo-sahi-inference-geospatial-export-pipeline.md`
 
 ---
 
@@ -234,6 +265,22 @@ The system executes one of two inference strategies:
 
 For SAHI inference, image slices are processed independently and then reconstructed into full-image coordinates.
 
+### Step 3B: Inference and Geospatial Export
+
+When the selected workflow is inference, the system executes the dedicated YOLO / SAHI inference and geospatial export pipeline.
+
+This stage may generate:
+
+- styled images with bounding boxes
+- per-image JSON prediction metadata
+- EXIF/GPS metadata records
+- UTM coordinates when GPS metadata is available
+- GeoJSON outputs
+- QGIS-compatible CSV summaries
+- batch-level JSON and CSV summaries
+
+This operational inference pipeline is documented in `docs/yolo-sahi-inference-geospatial-export-pipeline.md`.
+
 ### Step 4: Prediction Export
 
 Detections are normalized and exported as YOLO-format `.txt` files.
@@ -241,6 +288,9 @@ Detections are normalized and exported as YOLO-format `.txt` files.
 ### Step 5: Geospatial Metadata Extraction
 
 The system extracts GPS and EXIF metadata from drone images, converts coordinates, and generates geospatial output files.
+
+### Poster 5: YOLO / SAHI Inference and Geospatial Export
+![YOLO SAHI Inference Geospatial Export](assets/images/agridrone-vision-evaluation-pipeline-5-sahi-generation.png)
 
 ### Step 6: COCO Conversion
 
@@ -263,6 +313,39 @@ The enriched Markdown documentation can then be rendered into PDF using Pandoc a
 ### Step 10: Final Outputs
 
 The final result is a reproducible evaluation package containing predictions, geospatial files, COCO artifacts, metrics, and visual reports. When the auxiliary reporting workflow is used, Markdown and PDF documentation can also be generated.
+
+---
+
+## 📘 Documentation Map
+
+Detailed documentation is organized under `docs/`:
+
+```text
+docs/
+├── architecture.md
+├── methodology.md
+├── evaluation.md
+├── geospatial-processing.md
+├── georeferenced-detection-shapefile-pipeline.md
+├── yolo-cli-training-validation-inference-pipeline.md
+├── yolo-dataset-validation-benchmarking-service.md
+├── yolo-sahi-inference-geospatial-export-pipeline.md
+├── validation-artifact-reporting-pipeline.md
+└── limitations.md
+```
+
+Recommended reading order:
+
+1. `architecture.md`
+2. `yolo-cli-training-validation-inference-pipeline.md`
+3. `yolo-dataset-validation-benchmarking-service.md`
+4. `yolo-sahi-inference-geospatial-export-pipeline.md`
+5. `methodology.md`
+6. `evaluation.md`
+7. `geospatial-processing.md`
+8. `georeferenced-detection-shapefile-pipeline.md`
+9. `validation-artifact-reporting-pipeline.md`
+10. `limitations.md`
 
 ---
 

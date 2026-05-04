@@ -218,6 +218,39 @@ This step supports downstream GIS workflows and spatial analytics.
 
 ---
 
+## 6B. YOLO / SAHI Inference and Geospatial Export Methodology
+
+The operational inference stage converts a trained checkpoint into structured detection and geospatial artifacts.
+
+This stage covers:
+
+1. Select or resolve the trained `best.pt` checkpoint.
+2. Load class names and visualization colors.
+3. Process a single image, video, or directory of images.
+4. Execute direct YOLO inference or SAHI sliced inference.
+5. Reconstruct SAHI detections into full-image coordinates.
+6. Consolidate detections by class.
+7. Generate styled images with bounding boxes, labels, confidence scores, and optional legends.
+8. Extract EXIF/GPS metadata from source images.
+9. Convert GPS coordinates into UTM coordinates when possible.
+10. Persist per-image JSON metadata and prediction outputs.
+11. Export GeoJSON and QGIS-compatible CSV outputs when coordinates are available.
+12. Generate batch-level JSON and CSV summaries for directory inference.
+
+Recommended detailed document:
+
+```text
+docs/yolo-sahi-inference-geospatial-export-pipeline.md
+```
+
+Important methodological caution:
+
+```text
+The inference/export stage generates spatially enriched detection artifacts. Unless photogrammetric correction, camera calibration, terrain correction, and CRS handling are rigorously validated, these outputs should not be interpreted as survey-grade object geolocation.
+```
+
+---
+
 ## 7. YOLO-to-COCO Conversion
 
 To perform standardized evaluation, YOLO annotations and predictions are converted to COCO format.

@@ -247,9 +247,14 @@ Responsibilities:
 - run SAHI inference on individual images or directories
 - process images, videos, or full directories
 - extract detections, classes, confidence scores, and class counts
+- reconstruct slice-level detections into full-image coordinates
 - generate styled / annotated images
-- export predictions and metadata
-- generate geospatial outputs
+- export per-image prediction JSON and metadata JSON
+- extract EXIF/GPS metadata when available
+- convert GPS coordinates into UTM when possible
+- generate GeoJSON and QGIS-compatible CSV summaries
+- generate batch-level JSON and CSV summaries
+- optionally persist object crops when configured
 
 Supported functions may include:
 
@@ -260,6 +265,20 @@ run_inference_video
 run_inference_sahi_single_image
 run_inference_sahi_directory
 ```
+
+Recommended detailed document:
+
+```text
+docs/yolo-sahi-inference-geospatial-export-pipeline.md
+```
+
+Technical concerns:
+
+- SAHI can create a performance bottleneck on 4K imagery.
+- GPU memory pressure can increase with large `img_size`, large model variants, and high slice counts.
+- EXIF/GPS metadata may be missing or corrupted.
+- Inference and geospatial export are currently coupled in the operational flow.
+- Failed-image reprocessing is limited without a formal retry/failure manifest.
 
 ### 5. Model Selection Utility
 
@@ -482,19 +501,24 @@ In inference mode:
 1. `get_best_model()` can retrieve the best checkpoint.
 2. `predict_yolo.py` loads the model.
 3. The system processes an image, video, or directory.
-4. It generates detections, styled images, JSON outputs, metadata, and geospatial artifacts.
+4. It generates detections, class summaries, styled images, JSON outputs, metadata, and geospatial artifacts.
+5. When EXIF/GPS metadata exists, coordinates can be converted to UTM and exported as GeoJSON or QGIS-ready CSV.
+6. In batch mode, consolidated JSON/CSV summaries can be generated.
 
 Possible outputs:
 
 ```text
 predictions.json
 summary.json
+batch_summary.json
+batch_summary.csv
 JSON_metadata/
 styled-images/
 GeoJSON
 Shapefile
 QGIS_summary.csv
 JGW files
+object-crops/
 ```
 
 ### Step 4D: SAHI Inference Mode

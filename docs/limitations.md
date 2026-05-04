@@ -277,6 +277,62 @@ Agricultural environments vary over time.
 
 ---
 
+
+### Coupled Inference and Geospatial Export
+
+The operational inference pipeline currently connects detection, visualization, metadata extraction, GeoJSON export, and QGIS CSV generation in a single batch flow.
+
+**Risk:**
+
+- Harder to reuse inference without geospatial export.
+- Harder to rerun only geospatial export after metadata fixes.
+- Failures in EXIF/GPS extraction can complicate the inference workflow.
+
+**Recommended mitigation:**
+
+- Persist raw detection artifacts before geospatial enrichment.
+- Separate inference, visualization, metadata extraction, and spatial export into clearer service boundaries.
+- Make geospatial export re-runnable from saved prediction JSON.
+
+---
+
+### Output Idempotency and Timestamp Dependency
+
+Many generated outputs depend on timestamps and dynamically created folders.
+
+**Risk:**
+
+- Reruns may create fragmented or hard-to-compare output folders.
+- It may be difficult to determine whether an output already exists.
+- Failed batch reprocessing is harder without stable run IDs.
+
+**Recommended mitigation:**
+
+- Use explicit `run_id` values.
+- Persist run manifests.
+- Store failed-image manifests.
+- Support reprocessing from a saved failed-image list.
+
+---
+
+### Inference Resolution and Slice-Size Mismatch
+
+The model may be trained at one resolution but inferred at another resolution or with a SAHI slice size that changes the object scale distribution.
+
+**Risk:**
+
+- Detection quality may degrade.
+- Metrics may become difficult to compare across configurations.
+- Small-object recall and false positives may change unexpectedly.
+
+**Recommended mitigation:**
+
+- Record training resolution, inference `img_size`, and SAHI `slice_size` in every run summary.
+- Compare configurations only when parameters are documented.
+- Benchmark direct YOLO versus SAHI under controlled settings.
+
+---
+
 ### Confidence Threshold Sensitivity
 
 Confidence thresholds affect the precision-recall trade-off.

@@ -8,6 +8,39 @@ The geospatial component bridges object detection and geographic analysis by con
 
 ---
 
+
+## 🔗 Relationship to the YOLO / SAHI Inference Export Pipeline
+
+The geospatial processing layer is commonly invoked after direct YOLO or SAHI inference has produced detection results.
+
+The inference/export pipeline provides:
+
+```text
+styled images
+per-image prediction JSON
+class summaries
+EXIF/GPS metadata
+UTM coordinates when available
+GeoJSON records
+QGIS-compatible CSV summaries
+batch summaries
+```
+
+This document focuses on the geospatial enrichment and export behavior, while the operational inference flow is documented in:
+
+```text
+docs/yolo-sahi-inference-geospatial-export-pipeline.md
+```
+
+Important distinction:
+
+```text
+The inference pipeline determines what was detected in image space.
+The geospatial layer determines how those detections are associated with spatial metadata and GIS-compatible outputs.
+```
+
+---
+
 ## 🎯 Objectives
 
 The geospatial processing module is designed to:
