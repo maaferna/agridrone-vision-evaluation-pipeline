@@ -203,6 +203,36 @@ Responsibilities:
 - export validation results
 - integrate validation logs with ClearML when configured
 
+### 3B. Validation / Benchmarking Service
+
+Recommended detailed document:
+
+```text
+docs/yolo-dataset-validation-benchmarking-service.md
+```
+
+This subcomponent extends the general validation service into a reproducible benchmarking workflow.
+
+Responsibilities:
+
+- resolve `best.pt` and training metadata
+- read seed and configuration from `args.yaml` when available
+- generate temporary validation YAML files for selected splits
+- execute GPU warm-up before measurement
+- clear CUDA cache between repeated runs
+- run Ultralytics `model.val()`
+- extract global metrics and per-class arrays from `results.box`
+- compute average time per image and standard deviation across runs
+- log validation metrics and artifacts to ClearML
+- persist `validation_results_summary_run_*.json`
+
+Technical concerns:
+
+- tight coupling to Ultralytics folder structure
+- path bugs when rewriting YAML dynamically
+- ClearML failures should not break local validation
+- class metrics should be persisted with `class_id` and `class_name`, not only as unnamed arrays
+
 ### 4. Inference Service
 
 Representative file:
@@ -639,6 +669,17 @@ Mitigation:
 - avoid absolute paths where possible
 - validate read/write permissions before execution
 - support environment variables for machine-specific roots
+
+### Temporary validation YAML fragility
+
+Dynamic generation of validation YAML files can create incorrect dataset paths if paths are joined more than once or if the original YAML uses unexpected roots.
+
+Mitigation:
+
+- validate temporary YAML files before running `model.val()`
+- generate per-run temporary YAML names instead of reusing `temp_val.yaml`
+- normalize paths before writing YAML
+- test split redirection logic with synthetic datasets
 
 ### Configuration Drift
 

@@ -308,6 +308,41 @@ Per-class reporting prevents strong performance on frequent classes from hiding 
 
 ---
 
+
+## YOLO-Native Validation and Benchmarking Methodology
+
+The project also includes a YOLO-native validation path using Ultralytics `model.val()`.
+
+This methodology is useful when the goal is to benchmark trained YOLO checkpoints directly before or alongside COCO-style evaluation.
+
+Key steps:
+
+1. Resolve the trained `best.pt` checkpoint.
+2. Read training metadata from `args.yaml` when available.
+3. Generate a temporary validation YAML for the intended split.
+4. Validate that the temporary YAML points to the correct image directory.
+5. Select GPU/CPU device.
+6. Execute GPU warm-up when CUDA is available.
+7. Clear CUDA cache between runs.
+8. Execute `model.val()`.
+9. Extract global and per-class metrics.
+10. Compute timing statistics such as average time per image.
+11. Log metrics to ClearML when enabled.
+12. Persist a structured JSON summary.
+
+Recommended detailed document:
+
+```text
+docs/yolo-dataset-validation-benchmarking-service.md
+```
+
+Important methodological caution:
+
+```text
+YOLO-native validation and COCO evaluation are complementary, but they are not automatically equivalent. Their datasets, thresholds, metric definitions, and output formats should be documented when comparing results.
+```
+
+---
 ## 10. Report Generation
 
 The reporting stage saves structured and visual outputs.

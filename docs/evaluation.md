@@ -491,6 +491,44 @@ A complete evaluation report should include:
 
 ---
 
+
+## YOLO Dataset Validation and Benchmarking Service
+
+In addition to COCO-based evaluation, the project includes a YOLO-native validation and benchmarking component based on Ultralytics `model.val()`.
+
+This service is used to validate trained YOLO models directly against agricultural datasets while controlling runtime and reproducibility factors such as:
+
+- model checkpoint selection (`best.pt`)
+- dataset split redirection through temporary YAML generation
+- training metadata recovery from `args.yaml`
+- GPU warm-up before timing measurements
+- CUDA cache cleanup between runs
+- repeated validation runs
+- global and per-class metric extraction from `results.box`
+- average time per image
+- standard deviation across runs
+- ClearML logging
+- structured JSON summary persistence
+
+Recommended detailed document:
+
+```text
+docs/yolo-dataset-validation-benchmarking-service.md
+```
+
+### Relationship to COCO Evaluation
+
+| YOLO Validation / Benchmarking | COCO Evaluation |
+|---|---|
+| Uses Ultralytics `model.val()` | Uses `pycocotools` |
+| Useful for YOLO-native validation | Useful for standardized COCO-style evaluation |
+| Extracts metrics from `results.box` | Computes metrics from converted COCO JSON artifacts |
+| Can include GPU timing measurements | Focuses primarily on detection quality metrics |
+| Integrates with ClearML tracking | Integrates with JSON/CSV/plot reporting |
+
+Both evaluation paths are useful, but they should not be treated as identical unless their configurations, datasets, thresholds, and metric definitions are documented.
+
+---
 ## Recommended Future Improvements
 
 - Add experiment tracking with `run_id`.
@@ -499,6 +537,8 @@ A complete evaluation report should include:
 - Add qualitative false positive / false negative galleries.
 - Add IoU distribution plots.
 - Add runtime benchmarking.
+- Add validation benchmarking summaries from `model.val()`.
+- Persist class metrics with explicit `class_id` and `class_name`.
 - Add confidence-threshold sensitivity analysis.
 - Add automated metric regression tests.
 

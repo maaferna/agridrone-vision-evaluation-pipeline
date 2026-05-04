@@ -83,6 +83,7 @@ Main modules:
 - Geo-Metadata Extraction Module
 - COCO Conversion Module
 - COCO Evaluation Module
+- YOLO Validation / Benchmarking Service
 - Metrics Computation Module
 - Reporting and Visualization Module
 
@@ -255,6 +256,36 @@ COCO conversion is format-sensitive. Errors in image IDs, category IDs, bounding
 
 ---
 
+
+### YOLO Validation / Benchmarking Service
+
+**Responsibility:** Execute reproducible YOLO-native validation using Ultralytics `model.val()` and persist benchmark metrics for experiment traceability.
+
+Inputs:
+
+- Dataset YAML
+- Trained `best.pt` model
+- Training metadata such as `args.yaml`
+- Image size
+- Batch size
+- Confidence threshold
+- GPU/CPU device
+- ClearML configuration when enabled
+
+Outputs:
+
+- Global validation metrics
+- Per-class metrics
+- Timing statistics
+- Validation summary JSON
+- Ultralytics validation artifacts
+- ClearML logs and artifacts
+
+Technical concern:
+
+This service is tightly coupled to Ultralytics output conventions and local filesystem paths. Temporary validation YAML files should be validated before execution, and per-class metrics should be stored as named objects rather than ambiguous arrays.
+
+---
 ### COCO Evaluation Module
 
 **Responsibility:** Evaluate object detection performance using COCO-style metrics through `pycocotools`.
@@ -305,13 +336,14 @@ Reporting should preserve raw metrics and avoid hiding model weaknesses behind a
 ```text
 1. User starts pipeline from CLI.
 2. System loads configuration, model, images, labels, and class dictionary.
-3. YOLO or SAHI inference is executed.
-4. Predictions are reconstructed and normalized.
-5. EXIF/GPS metadata is extracted where available.
-6. Ground truth and predictions are converted to COCO format.
-7. pycocotools evaluation is executed.
-8. Global and per-class metrics are generated.
-9. JSON, CSV, plots, GeoJSON, and shapefiles are exported.
+3. Training, validation, YOLO inference, or SAHI inference is executed depending on the selected CLI mode.
+4. For validation, the benchmarking service can run `model.val()`, extract metrics, and log results.
+5. Predictions are reconstructed and normalized.
+6. EXIF/GPS metadata is extracted where available.
+7. Ground truth and predictions are converted to COCO format.
+8. pycocotools evaluation is executed when COCO evaluation is required.
+9. Global and per-class metrics are generated.
+10. JSON, CSV, plots, GeoJSON, and shapefiles are exported.
 ```
 
 ---

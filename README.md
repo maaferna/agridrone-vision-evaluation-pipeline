@@ -1,20 +1,8 @@
 # Precision Agriculture Object Detection Pipeline
 
 > **Research-grade computer vision pipeline for object detection, geospatial processing, and COCO-based model evaluation on high-resolution agricultural drone imagery.**
-This component demonstrates the design and implementation of a CLI-driven ML experimentation pipeline for agricultural computer vision.
 
-It coordinates YOLOv8/YOLOv11 training, validation, best-model selection, direct inference, SAHI sliced inference, geospatial output generation, and ClearML experiment tracking. It supports multi-run experimentation, configuration-based hyperparameters, GPU execution, structured output persistence, and model selection based on validation metrics.
-
-This module highlights applied experience in:
-
-- ML pipeline orchestration
-- YOLO model training and validation
-- ClearML experiment tracking
-- SAHI inference for high-resolution imagery
-- geospatial ML outputs
-- filesystem-based batch processing
-- reproducible experiment organization
-- applied ML engineering for agricultural computer vision
+---
 
 
 ### Core Runtime Stack
@@ -30,8 +18,7 @@ This module highlights applied experience in:
 | **Numerical Processing** | ![NumPy](https://img.shields.io/badge/NumPy-Array%20Computations-lightgrey) |
 | **Visualization** | ![Matplotlib](https://img.shields.io/badge/Matplotlib-Metrics%20Plots-blue) |
 | **Runtime Acceleration** | ![CUDA](https://img.shields.io/badge/CUDA-GPU%20Acceleration-green) |
-
-
+| **Benchmarking Support** | PyYAML, Ultralytics `model.val()`, CUDA warm-up, ClearML logging |
 
 ### Geospatial Processing & GIS Outputs
 
@@ -45,6 +32,18 @@ This module highlights applied experience in:
 
 ---
 
+## 🌟 Overview
+
+**AgriDrone Vision Evaluation Pipeline** is a computer vision and machine learning evaluation system designed to process high-resolution drone imagery in agricultural environments. The project integrates YOLO-based object detection, SAHI slicing inference, geospatial metadata extraction, standardized COCO evaluation metrics, and automated reporting.
+
+The pipeline was designed to support reproducible experimentation with object detection models applied to aerial agricultural imagery, where objects of interest may be small, partially occluded, visually ambiguous, or distributed across large 4K images.
+
+The system enables direct comparison between standard YOLO inference and SAHI-based sliced inference, helping evaluate how different inference strategies affect detection quality, recall, precision, and model robustness in real-world drone image conditions.
+
+---
+
+## 🖼️ Visual Overview
+
 ### Poster 1: Pipeline Overview
 ![Pipeline Overview](assets/images/agridrone-vision-evaluation-pipeline1.png)
 
@@ -57,35 +56,7 @@ This module highlights applied experience in:
 ### Poster 4: Shapefile Generation
 ![Shapefile Generation](assets/images/agridrone-vision-evaluation-pipeline-4-shapefile-generation.png)
 
-
 ---
-
-
-
-## 🌟 Overview
-
-**AgriDrone Vision Evaluation Pipeline** is a computer vision and machine learning evaluation system designed to process high-resolution drone imagery in agricultural environments. The project integrates YOLO-based object detection, SAHI slicing inference, geospatial metadata extraction, standardized COCO evaluation metrics, and automated reporting.
-
-The pipeline was designed to support reproducible experimentation with object detection models applied to aerial agricultural imagery, where objects of interest may be small, partially occluded, visually ambiguous, or distributed across large 4K images.
-
-The system enables direct comparison between standard YOLO inference and SAHI-based sliced inference, helping evaluate how different inference strategies affect detection quality, recall, precision, and model robustness in real-world drone image conditions.
-
----
-
-
-
-## Related Deployment Work
-
-This repository focuses on the ML experimentation and evaluation layer. A separate related project explores production-oriented integration patterns, including web interfaces, APIs, microservices, serverless inference functions, and deployment workflows.
-
-The separation is intentional:
-- this project focuses on model development, validation, geospatial outputs, and reproducible evaluation;
-- the companion project focuses on serving, integration, user-facing workflows, and production deployment.
-
----
-
-## 🖼️ Visual Overview
-
 
 
 ## 🛠️ Technology Stack
@@ -179,7 +150,6 @@ The project includes specialized sub-pipelines. Some are part of the core runtim
 | Pipeline | Purpose | Documentation |
 |---|---|---|
 | **YOLO / SAHI Inference Pipeline** | Runs direct YOLO or SAHI sliced inference over images, directories, and video sources. | `docs/methodology.md` |
-| **YOLO Experiment Orchestration Pipeline** | CLI-driven workflow for training, validation, best-model selection, inference, SAHI processing, geospatial outputs, and ClearML tracking. | `docs/yolo-cli-training-validation-inference-pipeline.md` |
 | **COCO Evaluation Pipeline** | Converts YOLO predictions and ground truth into COCO format and evaluates AP50, AP50:95, Precision, Recall, and F1. | `docs/evaluation.md` |
 | **Georeferenced Detection & Shapefile Generation Pipeline** | Converts detections into GIS-ready GeoJSON, CSV, and shapefiles using GPS/EXIF metadata. | `docs/georeferenced-detection-shapefile-pipeline.md` |
 | **Validation Artifact Reporting Pipeline** | Links YOLO validation artifacts into Markdown reports and renders reproducible PDFs with Pandoc and LaTeX. | `docs/validation-artifact-reporting-pipeline.md` |
@@ -187,44 +157,24 @@ The project includes specialized sub-pipelines. Some are part of the core runtim
 
 ---
 
-## 🧭 YOLO Experiment Orchestration
+## 🧪 YOLO Dataset Validation & Benchmarking
 
-The project also includes a CLI-driven orchestration layer for training, validation, model selection, inference, SAHI processing, geospatial outputs, and ClearML experiment tracking.
+The project includes a dedicated validation and benchmarking service for reproducible YOLO model evaluation over agricultural datasets.
 
-This layer is centered around:
+This component is invoked through the CLI orchestration layer and focuses on:
 
-```text
-scripts/main.py
-```
+- resolving trained `best.pt` checkpoints
+- reading training metadata such as `args.yaml`
+- generating temporary validation YAML files for target splits
+- executing GPU warm-up before benchmarking
+- clearing CUDA cache between runs
+- running Ultralytics `model.val()`
+- extracting global and per-class metrics
+- computing average time per image and run-to-run variability
+- logging metrics and artifacts to ClearML when enabled
+- persisting structured JSON summaries per validation run
 
-It coordinates:
-
-- YOLOv8 / YOLOv11 training
-- multi-run experimentation
-- optional hyperparameter loading from configuration files
-- validation on datasets or images
-- automatic best-model selection using validation metrics
-- standard YOLO inference
-- SAHI sliced inference for high-resolution images
-- geospatial output generation
-- ClearML experiment tracking
-- filesystem-based artifact persistence
-
-Representative modules:
-
-```text
-scripts/
-├── main.py
-├── yolo_training.py
-├── validation_yolo.py
-├── predict_yolo.py
-├── utils.py
-├── utils_prompts.py
-├── clearml_utils.py
-└── geo_data_utils.py
-```
-
-See: `docs/yolo-cli-training-validation-inference-pipeline.md`
+See: `docs/yolo-dataset-validation-benchmarking-service.md`
 
 ---
 
@@ -259,17 +209,6 @@ See: `docs/validation-artifact-reporting-pipeline.md`
 
 ---
 ## 📈 System Flow
-
-### Step 0: CLI Experiment Orchestration
-
-The full experimentation workflow can be initiated through the CLI entrypoint:
-
-```bash
-conda activate virtual_environment_yolo
-python -m scripts.main
-```
-
-The CLI can route execution to training, validation, standard inference, SAHI inference, video inference, model selection, geospatial outputs, and ClearML experiment tracking.
 
 ### Step 1: Execution Trigger
 
@@ -323,36 +262,7 @@ The enriched Markdown documentation can then be rendered into PDF using Pandoc a
 
 ### Step 10: Final Outputs
 
-The final result is a reproducible experiment and evaluation package containing model checkpoints, predictions, geospatial files, COCO artifacts, metrics, and visual reports. When the auxiliary reporting workflow is used, Markdown and PDF documentation can also be generated.
-
----
-
-## 📘 Documentation Map
-
-Detailed documentation is organized under `docs/`:
-
-```text
-docs/
-├── architecture.md
-├── methodology.md
-├── evaluation.md
-├── geospatial-processing.md
-├── georeferenced-detection-shapefile-pipeline.md
-├── yolo-cli-training-validation-inference-pipeline.md
-├── validation-artifact-reporting-pipeline.md
-└── limitations.md
-```
-
-Recommended reading order:
-
-1. `architecture.md`
-2. `yolo-cli-training-validation-inference-pipeline.md`
-3. `methodology.md`
-4. `evaluation.md`
-5. `geospatial-processing.md`
-6. `georeferenced-detection-shapefile-pipeline.md`
-7. `validation-artifact-reporting-pipeline.md`
-8. `limitations.md`
+The final result is a reproducible evaluation package containing predictions, geospatial files, COCO artifacts, metrics, and visual reports. When the auxiliary reporting workflow is used, Markdown and PDF documentation can also be generated.
 
 ---
 
