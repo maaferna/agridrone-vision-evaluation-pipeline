@@ -1,0 +1,839 @@
+# 🧭 YOLO CLI Training, Validation and Inference Orchestrator
+
+> **Purpose:** CLI-driven experiment orchestration layer for **YOLOv8/YOLOv11** training, validation, model selection, inference, SAHI processing, geospatial outputs, and **ClearML** experiment tracking.
+
+---
+
+## 🌟 Overview
+
+The **YOLO CLI Training, Validation and Inference Orchestrator** is a central module of the `agridrone-vision-evaluation-pipeline` project.
+
+### Purpose
+Coordinates the end-to-end machine learning workflow for agricultural drone imagery using **YOLO-based object detection models**. Unlike the validation-artifact reporting module, this component orchestrates:
+
+- **Training** and validation of models
+- **Model selection** (best checkpoint identification)
+- **Inference** execution (standard and SAHI)
+- **Geospatial outputs** generation
+- **Experiment tracking** with ClearML
+
+Typical execution:
+
+```bash
+conda activate virtual_environment_yolo
+python -m scripts.main
+```
+
+The orchestrator prompts the user to select the workflow, dataset/project, YOLO version, model size, image size, batch size, thresholds, device/GPU, and input image or directory.
+
+---
+
+## 🛠️ Component Classification
+
+This component can be classified as:
+
+- **🔧 Service Layer**
+- **📊 Data Processor**
+- **🤖 ML Pipeline Orchestrator**
+- **💻 CLI-driven Experiment Runner**
+- **🔬 Research-grade ML Workflow Coordinator**
+
+### Project Placement
+
+```mermaid
+graph TD
+    A[AgriDrone Vision Evaluation Pipeline] --> B[Experiment Orchestration Layer]
+    B --> C[CLI Orchestrator]
+    B --> D[Training Service]
+    B --> E[Validation Service]
+    B --> F[Model Selection Utility]
+    B --> G[Inference Service]
+    B --> H[SAHI Inference Service]
+    B --> I[ClearML Tracking Integration]
+    A --> J[Core Runtime Layer]
+    J --> K[YOLO / SAHI Inference]
+    J --> L[Prediction Normalization]
+    J --> M[COCO Evaluation]
+    J --> N[Geospatial Export]
+    A --> O[Supporting Workflows]
+    O --> P[Validation Artifact Reporting]
+    O --> Q[Dataset Diagnostics]
+    O --> R[Documentation Rendering]
+```
+
+---
+
+## 🎯 Main Responsibility
+
+The orchestrator coordinates the complete **YOLO experiment workflow**, including:
+
+- **🎛️ CLI Interface:** Select execution mode, project, YOLO version, model size
+- **⚙️ Configuration Loading:** Load class labels, visualization colors, hyperparameters
+- **🖥️ Device Management:** Select GPU / CPU device and initialize CUDA
+- **📊 Training:** Run multi-run training with optional hyperparameter tuning
+- **✅ Validation:** Validate trained models and assess performance
+- **🏆 Model Selection:** Identify and select the best `best.pt` checkpoint
+- **🔍 Inference:** Execute standard YOLO inference on images or directories
+- **✂️ SAHI Processing:** Perform sliced inference for improved detection
+- **🌍 Geospatial Export:** Generate GeoJSON, Shapefiles, and coordinate metadata
+- **📝 Tracking:** Persist metrics and experiment records to **ClearML**
+
+---
+
+## 📥 Inputs
+
+### Configuration Files
+
+| File | Purpose |
+|---|---|
+| **config.json** | Main training and execution configuration |
+| **labels_config.json** | Class labels, colors, and class-related metadata |
+| **config_parameters_training.json** | Optional hyperparameter configuration |
+| **dataset.yaml** | Dataset definition (YOLOv8/v11 compatible format) |
+
+### CLI Parameters
+
+User selections during execution:
+
+- **Execution Mode:** Training, Validation, Inference, or SAHI
+- **Project / Dataset:** Dataset selection
+- **Model Configuration:** YOLO version, model size, image size, batch size
+- **Device:** GPU / CPU selection
+- **Input Source:** Image path or directory
+- **SAHI Parameters:** Slice size, overlap, confidence thresholds
+
+### Data Inputs
+
+- 📷 **Images:** Drone imagery in standard formats
+- 🏷️ **YOLO Labels:** Annotation files in YOLO format
+- 🤖 **Model Weights:** Pre-trained or checkpoint weights
+- 🌐 **EXIF / GPS Metadata:** Geospatial information from drone images
+- 📊 **Previous Results:** Training metrics and validation outputs
+
+---
+
+## 📤 Outputs
+
+Depending on the selected mode, the orchestrator generates:
+
+### Model Artifacts
+- **best.pt** - Best model checkpoint
+- **Training Results** - results.csv with epoch-level metrics
+
+### Prediction & Metadata Outputs
+- **predictions.json** - Standardized detection predictions
+- **results.json** - Aggregated validation results
+- **JSON Metadata** - Detection metadata with confidence scores
+
+### Geospatial Outputs
+- **GeoJSON** - Georeferenced detections
+- **Shapefiles** - Vector-format detections for GIS tools
+- **JGW World Files** - Coordinate reference files
+
+### Tracking & Reporting
+- **ClearML Task Records** - Experiment tracking data
+- **best_metrics_*.json** - Per-model performance summaries
+- **Styled Images** - Annotated visualizations with predictions
+
+### Output Roots
+```
+training_results/  → Model checkpoints and training logs
+outputs/           → Predictions and geospatial outputs
+valid/             → Validation results
+```
+
+---
+
+## 🧩 Main Components
+
+### 1️⃣ CLI Orchestrator
+
+**File:** `scripts/main.py`
+
+**Responsibilities:**
+- 🎛️ Act as the application entrypoint
+- 📋 Prompt user for execution mode selection
+- 🗂️ Select and load project/dataset configuration
+- 🎮 Load class labels, visualization colors, hyperparameters
+- ⚙️ Initialize GPU/CUDA and ClearML context
+- 🚀 Route execution to training, validation, inference, or SAHI workflows
+
+**Architectural Role:**
+```
+Application Entrypoint → Orchestration Layer
+```
+
+### 2️⃣ Training Service
+
+**File:** `scripts/yolo_training.py`
+
+**Responsibilities:**
+
+- execute YOLO training
+- support YOLOv8 / YOLOv11 configurations
+- run multiple training runs
+- manage seeds for reproducibility
+- persist model checkpoints
+- generate `results.csv`
+- save training summaries
+- log results to ClearML
+
+Outputs:
+
+```text
+best.pt
+results.csv
+summary.json
+training logs
+ClearML task records
+```
+
+### 3. Validation Service
+
+Representative file:
+
+```text
+scripts/validation_yolo.py
+```
+
+Responsibilities:
+
+- validate trained models on datasets or individual images
+- compute precision, recall, mAP50, mAP50-95, and F1-score
+- export validation results
+- integrate validation logs with ClearML when configured
+
+### 4. Inference Service
+
+Representative file:
+
+```text
+scripts/predict_yolo.py
+```
+
+Responsibilities:
+
+- run standard YOLO inference
+- run SAHI inference on individual images or directories
+- process images, videos, or full directories
+- extract detections, classes, confidence scores, and class counts
+- generate styled / annotated images
+- export predictions and metadata
+- generate geospatial outputs
+
+Supported functions may include:
+
+```text
+run_inference
+run_inference_single_image
+run_inference_video
+run_inference_sahi_single_image
+run_inference_sahi_directory
+```
+
+### 5. Model Selection Utility
+
+Representative function:
+
+```text
+get_best_model()
+```
+
+Responsibilities:
+
+- scan previous training run directories
+- read `results.csv`
+- validate required metric columns
+- compute a weighted score
+- select the best `best.pt` checkpoint
+- export selected model metrics to JSON
+
+Example weighted score:
+
+```text
+score = 0.7 * mAP50-95 + 0.3 * F1
+```
+
+### 6. Dynamic Training Parameter Loader
+
+Representative function:
+
+```text
+select_training_parameters()
+```
+
+Responsibilities:
+
+- read optional hyperparameters from `config_parameters_training.json`
+- convert types safely
+- merge runtime-selected parameters into training configuration
+- support repeatable experiment configuration
+
+### 7. ClearML Integration
+
+Representative utilities:
+
+```text
+start_clearml_task()
+setup_credentials_clearml_task()
+fetch_and_store_clearml_data()
+```
+
+Responsibilities:
+
+- initialize ClearML tasks
+- configure experiment tracking credentials
+- log metrics, tasks, and metadata
+- associate runs with selected datasets/projects
+- support experiment review and traceability
+
+Scope clarification:
+
+ClearML is an **external experiment tracking integration**, not a core model inference dependency.
+
+### 8. Geospatial Processing Layer
+
+Representative file:
+
+```text
+geo_data_utils.py
+```
+
+Responsibilities:
+
+- extract EXIF/GPS metadata
+- convert coordinates
+- handle UTM / WGS84 outputs
+- process DEM or terrain elevation where available
+- generate GeoJSON, CSV, shapefile, and JGW artifacts
+
+### 9. Utility Layer
+
+Representative files:
+
+```text
+utils.py
+utils_prompts.py
+clearml_utils.py
+```
+
+Responsibilities:
+
+- path handling
+- prompts and CLI interaction
+- model selection
+- JSON generation
+- logging helpers
+- configuration utilities
+- label/color loading
+
+---
+
+## 🔄 End-to-End Flow
+
+```text
+User executes CLI
+        │
+        ▼
+scripts/main.py
+        │
+        ▼
+Load configuration and labels
+        │
+        ▼
+Select execution mode
+        │
+        ├── Train
+        │     └── train_yolo → best.pt, results.csv, ClearML logs
+        │
+        ├── Validate
+        │     └── validation_yolo → metrics, reports, ClearML logs
+        │
+        └── Inference / SAHI
+              └── predict_yolo → detections, metadata, GeoJSON, Shapefiles
+```
+
+---
+
+## 🔍 Detailed System Flow
+
+### Step 1: CLI Trigger
+
+The workflow starts when the user executes:
+
+```bash
+conda activate virtual_environment_yolo
+python -m scripts.main
+```
+
+The CLI prompts for execution mode, project/dataset, YOLO version, model size, image size, batch size, thresholds, device/GPU, and image or directory path.
+
+### Step 2: Configuration Loading
+
+The orchestrator loads:
+
+```text
+config.json
+assets/json/labels_config.json
+assets/json/config_parameters_training.json
+dataset.yaml
+```
+
+It also initializes:
+
+- GPU / CUDA context
+- ClearML credentials and task settings
+- dataset paths
+- output paths
+- class labels and colors
+
+### Step 3: Mode Selection
+
+Supported modes may include:
+
+```text
+train
+validation
+inference
+SAHI inference
+video inference
+single-image inference
+directory inference
+```
+
+### Step 4A: Training Mode
+
+In training mode:
+
+1. `main.py` reads training configuration.
+2. Optional hyperparameters are merged from `config_parameters_training.json`.
+3. `train_yolo()` executes one or multiple runs.
+4. Each run creates a structured folder.
+5. ClearML task is initialized.
+6. Metrics and checkpoints are saved.
+7. `best.pt`, `results.csv`, and summaries are persisted.
+
+Typical outputs:
+
+```text
+training_results/
+├── model_name/
+│   ├── image_size/
+│   │   ├── run_1/
+│   │   │   ├── weights/best.pt
+│   │   │   ├── results.csv
+│   │   │   └── summary.json
+```
+
+### Step 4B: Validation Mode
+
+In validation mode:
+
+1. The user selects a model manually or automatically.
+2. `get_best_model()` can scan previous results.
+3. `validation_yolo.py` runs validation.
+4. Metrics are computed and exported.
+5. ClearML logs may be generated.
+
+Metrics include:
+
+```text
+precision
+recall
+mAP50
+mAP50-95
+F1-score
+```
+
+### Step 4C: Inference Mode
+
+In inference mode:
+
+1. `get_best_model()` can retrieve the best checkpoint.
+2. `predict_yolo.py` loads the model.
+3. The system processes an image, video, or directory.
+4. It generates detections, styled images, JSON outputs, metadata, and geospatial artifacts.
+
+Possible outputs:
+
+```text
+predictions.json
+summary.json
+JSON_metadata/
+styled-images/
+GeoJSON
+Shapefile
+QGIS_summary.csv
+JGW files
+```
+
+### Step 4D: SAHI Inference Mode
+
+In SAHI mode:
+
+1. A high-resolution image is sliced.
+2. YOLO inference is executed per slice.
+3. Detections are reconstructed into full-image coordinates.
+4. Duplicates are filtered.
+5. Predictions are exported.
+6. Metadata and spatial outputs are generated.
+
+SAHI is especially useful for 4K drone imagery where small targets may be missed by direct resizing.
+
+### Step 5: Best Model Selection
+
+The model selection utility scans previous training results.
+
+It reads:
+
+```text
+results.csv
+```
+
+It validates metric columns and computes a weighted score:
+
+```text
+score = 0.7 * mAP50-95 + 0.3 * F1
+```
+
+The best checkpoint is selected:
+
+```text
+best.pt
+```
+
+A summary artifact may be saved:
+
+```text
+best_metrics_*.json
+```
+
+### Step 6: Persistence
+
+The system persists artifacts in local filesystem directories:
+
+```text
+outputs/
+training_results/
+valid/
+```
+
+Output artifacts include model checkpoints, metrics CSV, JSON summaries, prediction JSON, metadata JSON, styled images, GeoJSON, shapefiles, world files, and ClearML records.
+
+### Step 7: Experiment Tracking
+
+ClearML is used as an external tracking system.
+
+Tracked information may include task name, dataset/project name, training configuration, metrics, logs, selected model, and run metadata.
+
+ClearML improves traceability, but the pipeline should still preserve local run manifests for portability.
+
+---
+
+## 📂 Recommended Repository Placement
+
+Recommended document path:
+
+```text
+docs/yolo-cli-training-validation-inference-pipeline.md
+```
+
+Representative module layout:
+
+```text
+scripts/
+├── main.py
+├── yolo_training.py
+├── validation_yolo.py
+├── predict_yolo.py
+├── utils.py
+├── utils_prompts.py
+├── clearml_utils.py
+└── geo_data_utils.py
+```
+
+Configuration layout:
+
+```text
+config.json
+assets/json/
+├── labels_config.json
+└── config_parameters_training.json
+```
+
+Output layout:
+
+```text
+training_results/
+outputs/
+valid/
+```
+
+---
+
+## ⚙️ Configuration Strategy
+
+The current workflow is configuration-assisted, but not yet fully configuration-driven.
+
+Current configuration sources:
+
+```text
+config.json
+labels_config.json
+config_parameters_training.json
+dataset.yaml
+CLI prompts
+```
+
+Recommended future structure:
+
+```text
+config/
+├── experiment.yaml
+├── dataset.yaml
+├── training.yaml
+├── inference.yaml
+└── geospatial.yaml
+```
+
+A typed configuration layer would reduce key mismatch errors, path drift, inconsistent CLI prompts, invalid parameter types, and fragile dataset switching.
+
+Recommended tools:
+
+- Pydantic
+- Hydra
+- OmegaConf
+- JSON Schema
+- Typer / Click for CLI commands
+
+---
+
+## 🚨 Technical Risks
+
+### Tight Coupling Between CLI, Configuration and Execution
+
+Risk:
+
+- changes to prompts or config keys can break downstream execution
+- modules are harder to automate in CI/CD
+- non-interactive execution is limited
+
+Mitigation:
+
+- introduce explicit CLI subcommands
+- support config-only execution
+- validate configuration before running
+- isolate orchestration from business logic
+
+### Filesystem Path Dependency
+
+Risk:
+
+- path changes break execution
+- mounted volume permissions can cause failures
+- portability across machines is reduced
+
+Mitigation:
+
+- centralize paths in configuration
+- avoid absolute paths where possible
+- validate read/write permissions before execution
+- support environment variables for machine-specific roots
+
+### Configuration Drift
+
+There is a risk of mismatch between:
+
+```text
+config.json
+dataset.yaml
+labels_config.json
+training_results/
+Roboflow export folders
+```
+
+Mitigation:
+
+- validate class names and class IDs across files
+- validate dataset paths before training
+- generate a run manifest
+- store resolved configuration with each run
+
+### Interactive Prompt Limitation
+
+Risk:
+
+- harder to automate
+- harder to run in CI/CD
+- harder to schedule
+- harder to reproduce exact commands
+
+Mitigation:
+
+- add command-line flags
+- add non-interactive mode
+- store prompt selections in run config
+- support `--config experiment.yaml`
+
+### No Formal Retry Logic
+
+There are no automatic retries for I/O failures, ClearML logging issues, inference failures, missing or locked files, or network issues.
+
+Mitigation:
+
+- add failure logs
+- implement retry for non-deterministic I/O
+- continue batch execution safely
+- support failed-item reprocessing
+
+### Partial Observability
+
+The system uses logs and ClearML, but structured operational observability is limited.
+
+Mitigation:
+
+- add structured JSON logs
+- track per-stage duration
+- save failed image list
+- persist run-level manifest
+- log ClearML failures separately from pipeline failures
+
+---
+
+## ⚠️ Known Failure Modes
+
+| Failure Mode | Cause | Resolution / Mitigation |
+|---|---|---|
+| Multiple inconsistent timestamps | Timestamps generated in several modules | Generate timestamp once in `main.py` and pass it downstream |
+| Output path mismatch | Incorrect dataset/project folder resolution | Centralize output path construction |
+| Missing `best_metrics.json` | Directory not created before write | Use `os.makedirs(output_dir, exist_ok=True)` before writing |
+| `NoneType` error in AGL calculation | DEM lookup returned `None` | Add fallback terrain elevation handling |
+| Module import errors | Incorrect execution context | Run with `python -m scripts.main` |
+| ClearML logging error | Incorrect API usage or log-level casting | Validate ClearML logging calls |
+| Dataset permission issue | Mounted dataset folder not writable | Validate cache/output permissions |
+| Duplicate labels warning | Duplicate labels in YOLO files | Add label QA and duplicate detection checks |
+
+---
+
+## 🧪 Reproducibility Recommendations
+
+Every run should persist a manifest such as:
+
+```json
+{
+  "run_id": "experiment_001",
+  "mode": "train",
+  "dataset": "dataset_name",
+  "dataset_yaml": "path/to/dataset.yaml",
+  "model_family": "YOLOv11",
+  "model_size": "l",
+  "image_size": 1280,
+  "batch_size": 8,
+  "device": "cuda:0",
+  "seed": 42,
+  "config_files": {
+    "main": "config.json",
+    "labels": "assets/json/labels_config.json",
+    "training_parameters": "assets/json/config_parameters_training.json"
+  },
+  "outputs": {
+    "training_results": "training_results/...",
+    "best_model": "training_results/.../weights/best.pt"
+  }
+}
+```
+
+---
+
+## 🧪 Testing Recommendations
+
+High-priority tests:
+
+- config loading tests
+- class dictionary consistency tests
+- dataset YAML path validation
+- `results.csv` metric column validation
+- `get_best_model()` selection tests
+- inference output schema tests
+- SAHI reconstruction tests
+- geospatial output generation tests
+- ClearML failure isolation tests
+
+---
+
+## 🚀 Production Hardening Roadmap
+
+### Phase 1: Stabilize Local Experimentation
+
+- add typed configuration
+- reduce interactive prompts
+- add run manifest
+- centralize path management
+- improve structured logging
+
+### Phase 2: Improve Automation
+
+- add CLI subcommands
+- support non-interactive execution
+- add retry for I/O and ClearML logging
+- add tests for core transformations
+- add reproducible environment files
+
+### Phase 3: Scale Execution
+
+- add local multiprocessing
+- add GPU-aware batching
+- add storage abstraction
+- optionally add task queue if multi-user or scheduled execution becomes necessary
+
+### Phase 4: Productionize
+
+- add API layer if needed
+- add worker-based execution
+- add centralized monitoring
+- add role-based access control if sensitive data is processed
+- add artifact registry or model registry
+
+---
+
+## 📊 Maturity Assessment
+
+Current maturity:
+
+```text
+Prototype avanzado / High-maturity research system
+```
+
+Strengths:
+
+- end-to-end YOLO workflow
+- multi-run training
+- best-model selection
+- SAHI inference support
+- geospatial outputs
+- ClearML tracking
+- modular file organization
+- structured artifacts
+
+Limitations:
+
+- interactive CLI
+- local filesystem dependence
+- partial error handling
+- no background workers
+- no retry logic
+- no typed configuration layer
+- limited CI/CD automation
+
+This module is strong for research-grade experimentation and internal ML development. To become production-ready, it should evolve toward configuration-driven execution, typed validation, stronger observability, and better automation.
+
+---
+
+
+## 🔒 Privacy and Confidentiality Notice
+
+This documentation describes the technical architecture and methodology of a YOLO experimentation pipeline in a generalized form.
+
+It does not expose private datasets, client or company names, sensitive field locations, production credentials, private model weights, internal infrastructure paths, or unpublished experimental results.
+
+Any examples included in a public repository should be anonymized, synthetic, or non-sensitive.
