@@ -1,573 +1,559 @@
-# ⚠️ Limitations
+# 📝 Validation Artifact Linking and Documentation Rendering Pipeline
 
-## 🌟 Overview
-
-This document describes the known technical, methodological, architectural, and operational limitations of the **AgriDrone Vision Evaluation Pipeline**.
-
-The project is a strong research-grade computer vision and evaluation pipeline, but it should not be represented as a fully productionized distributed MLOps platform unless additional infrastructure, orchestration, testing, and observability layers are implemented.
+> **Purpose:** Supports reproducible documentation by linking YOLO validation artifacts into Markdown reports and optionally rendering PDF outputs.
 
 ---
 
-## 📈 Current Maturity Level
+## 📖 Overview
 
-**Current maturity classification:**
+The **Validation Artifact Linking and Documentation Rendering Pipeline** bridges the gap between machine learning experimentation and reproducible technical documentation. It integrates validation artifacts—such as **confusion matrices**, **metric curves**, **prediction examples**, and **JSON metric summaries**—into Markdown-based documentation using symbolic links, ensuring a **single source of truth**.
+
+Rendered Markdown documentation can be converted into **PDF** using **Pandoc** and **LaTeX** when a publication-style report is needed. These tools belong to the documentation layer and are not core inference or evaluation dependencies.
+
+---
+
+## 🛠️ Component Classification
+
+This module is a **supporting reproducible reporting pipeline**, not a core inference, training, geospatial processing, or COCO evaluation component.
+
+### Classification:
+
+- **📊 Data Processor**
+- **🔄 Batch Processing Task**
+- **📜 Documentation Automation Utility**
+- **🔧 Infrastructure Support Component**
+- **📑 Reproducible ML Reporting Module**
+
+> **Scope note:** This document describes an auxiliary reporting workflow. Pandoc, LaTeX, Bash, and symbolic links should be interpreted as documentation/reporting tools rather than core computer vision technologies.
+
+### Project Layer:
+
+```mermaid
+graph TD
+    A[Core ML Pipeline] --> B[Dataset Engineering]
+    B --> C[Training / Validation]
+    C --> D[YOLO / SAHI Inference]
+    D --> E[Geospatial Processing]
+    E --> F[COCO Evaluation]
+    F --> G[Documentation & Reporting Automation]
+```
+
+---
+
+## 🎯 Main Responsibility
+
+The module automates the integration of **model validation artifacts** into technical documentation while preserving:
+
+- **Traceability**
+- **Reproducibility**
+- **File Integrity**
+
+### Key Features:
+
+- 📄 **Expose** model validation results in Markdown documentation.
+- 🔗 **Link** confusion matrices, curves, visual examples, and metric summaries.
+- 🗂️ **Organize** validation artifacts by dataset version or experiment folder convention.
+- 🖨️ **Optionally render** documentation into PDF using Pandoc and LaTeX.
+- ✅ **Maintain** a single source of truth for experimental artifacts.
+- 🚀 **Avoid** duplicating large validation outputs.
+- 📊 **Standardize** reporting across dataset versions, experiment folders, or model validation runs.
+
+This pipeline acts as a **bridge** between the **ML experimentation pipeline** and the **reproducible documentation system**.
+
+---
+
+## ❓ Why This Module Matters
+
+In applied computer vision projects, evaluation artifacts are often scattered across training directories, experiment folders, local validation runs, and manually assembled reports.
+
+That creates several problems:
+
+- Reports can become disconnected from the original experiment outputs.
+- Copied images may become outdated.
+- Metrics may be duplicated inconsistently.
+- Dataset-version comparisons become difficult.
+- Markdown reports may reference unstable paths.
+- PDF generation may break due to missing assets.
+- Scientific reproducibility becomes weaker.
+
+This module reduces those risks by standardizing how validation artifacts are discovered, linked, documented, and rendered.
+
+The key idea is:
 
 ```text
-Advanced prototype / Research-grade engineering pipeline
+Validation outputs remain in their original experiment directory,
+while documentation references them through stable symbolic links.
 ```
 
-The system is more advanced than a basic proof of concept because it includes:
-
-- ✅ YOLO inference
-- ✅ SAHI sliced inference
-- ✅ Prediction normalization
-- ✅ COCO conversion
-- ✅ COCO evaluation
-- ✅ Global and per-class metrics
-- ✅ Automated reports
-- ✅ Geospatial exports
-- ✅ Batch processing over image directories
-
-However, it is not yet fully production-ready because it lacks:
-
-- ❌ Formal orchestration
-- ❌ Robust retry logic
-- ❌ Distributed processing
-- ⚠️ Experiment tracking is partially supported through ClearML, but local run manifests and failure isolation should still be improved
-- ❌ Automated testing coverage
-
 ---
 
-## 🏗️ Architectural Limitations
+## 📥 Input Artifacts
 
-### Filesystem-Based Coupling
+The pipeline consumes validation outputs generated by YOLO model evaluation runs.
 
-The system relies heavily on local directory structures and file naming conventions.
-
-**Risk:**
-
-- Path changes can break the pipeline.
-- Testing becomes harder.
-- Deployment to cloud or distributed environments becomes more difficult.
-
-**Recommended mitigation:**
-
-- Introduce a formal configuration layer.
-- Use a storage abstraction.
-- Support object storage for larger workloads.
-
----
-
-### Script-Driven Orchestration
-
-The current workflow is primarily executed through local scripts.
-
-**Risk:**
-
-- Execution logic can become tightly coupled.
-- Harder to reuse individual modules independently.
-- Difficult to schedule, monitor, or scale.
-
-**Recommended mitigation:**
-
-- Refactor into explicit service modules.
-- Add CLI commands with clear subcommands.
-- Use a configuration-driven pipeline runner.
-
----
-
-### No Formal Task Queue
-
-There is no formal asynchronous processing layer.
-
-**Missing components:**
-
-- Task queue
-- Message broker
-- Workers
-- Retry queue
-- Failure queue
-- Scheduled execution
-
-**Risk:**
-
-- Large datasets must be processed synchronously.
-- Failures are harder to isolate.
-- Long-running jobs are harder to manage.
-
-**Recommended mitigation:**
-
-- Add Celery, RQ, Dramatiq, or a similar task system if production batch processing is required.
-- For local research execution, add multiprocessing first before over-engineering into distributed queues.
-
----
-
-## 📊 Scalability Limitations
-
-### Sequential Batch Processing
-
-The current processing model is primarily batch-oriented and sequential.
-
-**Risk:**
-
-- Runtime increases linearly with dataset size.
-- 4K images and SAHI slicing can create significant computational cost.
-- Processing large datasets can become slow.
-
-**Recommended mitigation:**
-
-- Parallelize image-level inference.
-- Add GPU-aware batching.
-- Use multiprocessing for CPU-bound preprocessing and metadata extraction.
-- Keep GPU inference controlled to avoid memory exhaustion.
-
----
-
-### SAHI Computational Overhead
-
-SAHI improves small-object detection but requires multiple inference calls per image.
-
-**Risk:**
-
-- Runtime increases significantly.
-- GPU memory and CPU overhead may increase.
-- Large overlap ratios can multiply the number of slices.
-
-**Recommended mitigation:**
-
-- Benchmark different `slice_size` and `overlap_ratio` values.
-- Record runtime per configuration.
-- Compare recall gains against inference cost.
-
----
-
-### Local Storage Bottlenecks
-
-The system writes many artifacts to disk.
-
-**Risk:**
-
-- Large JSON, image, shapefile, and plot outputs can increase storage usage.
-- Slow disks can affect throughput.
-- Output directories may become difficult to manage.
-
-**Recommended mitigation:**
-
-- Add output retention policies.
-- Compress large artifacts where appropriate.
-- Store run outputs under unique `run_id` directories.
-
----
-
-## 📏 Evaluation Limitations
-
-### Dependency on Annotation Quality
-
-Object detection metrics are only as reliable as the ground truth annotations.
-
-**Risk:**
-
-- Inconsistent bounding boxes distort AP metrics.
-- Missing labels can make correct predictions appear as false positives.
-- Ambiguous objects can reduce metric reliability.
-
-**Recommended mitigation:**
-
-- Perform annotation QA.
-- Track annotation version.
-- Review false positives and false negatives visually.
-
----
-
-### Dataset Imbalance
-
-Agricultural datasets often contain class imbalance.
-
-**Risk:**
-
-- Global metrics may be dominated by frequent classes.
-- Rare classes may perform poorly but remain hidden in aggregate results.
-
-**Recommended mitigation:**
-
-- Always report per-class metrics.
-- Include class distribution tables.
-- Use stratified analysis by class, image condition, and location.
-
----
-
-### AP50 Can Be Misleading
-
-AP50 is less strict than AP50:95.
-
-**Risk:**
-
-- AP50 may suggest strong performance even when bounding box localization is weak.
-
-**Recommended mitigation:**
-
-- Report AP50 and AP50:95 together.
-- Include qualitative examples.
-- Review localization errors visually.
-
----
-
-### maxDets Sensitivity
-
-The system uses:
+Typical inputs include:
 
 ```text
-maxDets = [100, 1000, 3000]
+validation_results_summary_run_1.json
+confusion_matrix.png
+PR_curve.png
+P_curve.png
+R_curve.png
+F1_curve.png
+results.png
+val_batch0_pred.jpg
+dataset.yaml
+Markdown documentation file
 ```
 
-**Risk:**
-
-- Different maxDets values can affect evaluation outcomes in dense scenes.
-- Comparisons with external benchmarks may require documenting this configuration clearly.
-
-**Recommended mitigation:**
-
-- Always report maxDets values in evaluation summaries.
-- Avoid comparing results to external studies unless configurations are compatible.
-
----
-
-## 🧠 Model and Inference Limitations
-
-### Small-Object Detection Difficulty
-
-Drone images often contain small objects relative to the full image size.
-
-**Risk:**
-
-- Direct YOLO inference may miss small objects after resizing.
-- SAHI may improve recall but increase false positives.
-
-**Recommended mitigation:**
-
-- Compare direct YOLO and SAHI runs.
-- Tune slice size and overlap ratio.
-- Perform class-specific error analysis.
+| Category | Examples |
+|---|---|
+| Validation visualizations | `confusion_matrix.png`, `PR_curve.png`, `F1_curve.png` |
+| Prediction examples | `val_batch*_pred.jpg`, styled prediction images |
+| Metric summaries | `validation_results_summary_run_1.json`, `results.csv` |
+| Dataset configuration | `dataset.yaml`, class names, dataset version or experiment metadata |
+| Documentation source | Markdown report template |
+| Rendering configuration | Optional Pandoc options, LaTeX engine, fonts |
 
 ---
 
-### Model Drift
+## 📤 Output Artifacts
 
-Agricultural environments vary over time.
-
-**Potential sources of drift:**
-
-- Lighting changes
-- Crop growth stages
-- Seasonal variation
-- Camera altitude differences
-- Sensor changes
-- New field conditions
-- Different geographic regions
-
-**Risk:**
-
-- Model performance may degrade outside the training distribution.
-
-**Recommended mitigation:**
-
-- Periodically evaluate on new field data.
-- Track dataset versions.
-- Monitor performance by date, field, and image condition.
-
----
-
-### Confidence Threshold Sensitivity
-
-Confidence thresholds affect the precision-recall trade-off.
-
-**Risk:**
-
-- High thresholds may reduce recall.
-- Low thresholds may increase false positives.
-
-**Recommended mitigation:**
-
-- Run confidence threshold sensitivity analysis.
-- Report chosen threshold with every experiment.
-- Use PR curves for model comparison.
-
----
-
-## 🌍 Geospatial Limitations
-
-### Incomplete GPS Metadata
-
-Some images may lack GPS or EXIF metadata.
-
-**Risk:**
-
-- Spatial outputs may be incomplete.
-- Images without GPS cannot be mapped reliably.
-
-**Recommended mitigation:**
-
-- Generate a geospatial metadata completeness report.
-- Mark images with missing metadata explicitly.
-
----
-
-### Approximate Object Geolocation
-
-Image-level GPS metadata does not automatically provide precise object-level ground coordinates.
-
-**Risk:**
-
-- Detection bounding boxes may be incorrectly interpreted as precise ground locations.
-
-**Recommended mitigation:**
-
-- Treat spatial outputs as approximate unless photogrammetric correction is applied.
-- Document assumptions about image footprint and coordinate projection.
-
----
-
-### AGL and FOV Estimation Uncertainty
-
-AGL and field-of-view calculations depend on altitude, terrain, and camera metadata.
-
-**Risk:**
-
-- Incorrect altitude or missing terrain data can distort estimated coverage.
-
-**Recommended mitigation:**
-
-- Mark AGL and FOV as estimated when appropriate.
-- Use DEM data when available.
-- Avoid claiming survey-grade accuracy without validation.
-
----
-
-
-### Temporary Validation YAML Fragility
-
-The validation / benchmarking service may generate temporary YAML files to redirect evaluation toward a specific split such as `test/images`.
-
-**Risk:**
-
-- Incorrect path rewriting can generate invalid paths such as `test/images/test/images`.
-- Reusing a generic `temp_val.yaml` can reduce idempotency.
-- The validation run may silently evaluate the wrong split if the generated YAML is not checked.
-
-**Recommended mitigation:**
-
-- Generate temporary YAML files using a unique `run_id`.
-- Validate temporary YAML paths before calling `model.val()`.
-- Add unit tests for split redirection logic.
-- Store the final resolved YAML path in the validation summary JSON.
-
----
-
-### Benchmarking Metric Fragility
-
-YOLO validation metrics may be extracted as arrays, especially for per-class metrics.
-
-**Risk:**
-
-- Class order changes can misalign metric values and class names.
-- Reports may attach metrics to the wrong class.
-- Downstream comparison scripts become fragile.
-
-**Recommended mitigation:**
-
-- Persist per-class metrics as explicit objects with `class_id`, `class_name`, and metric fields.
-- Validate array length against `names` and `nc`.
-- Include the class dictionary version in validation summaries.
-
----
-## 🧪 Reproducibility Limitations
-
-### No Formal Experiment Registry
-
-The system generates metrics and artifacts but does not necessarily enforce experiment tracking.
-
-**Risk:**
-
-- Runs may be difficult to reproduce exactly.
-- Model, dataset, and parameter versions may become ambiguous.
-
-**Recommended mitigation:**
-
-Add a `run_manifest.json` file containing:
+Typical outputs include:
 
 ```text
-run_id
-mode
-model_version
-dataset_version
-class_dictionary_version
-inference_mode
-img_size
-confidence_threshold
-slice_size
-overlap_ratio
-maxDets
-timestamp
-output_directory
-temporary_validation_yaml
-clearml_task_id
-validation_split
+docs/assets/validation/img-v3/confusion_matrix.png
+docs/assets/validation/img-v3/PR_curve.png
+docs/assets/validation/img-v3/F1_curve.png
+docs/reports/dataset-v3-validation-report.md
+docs/reports/dataset-v3-validation-report.pdf
+```
+
+| Output | Description |
+|---|---|
+| Symbolic links | Stable references to validation artifacts |
+| Enriched Markdown | Documentation with embedded images and metrics |
+| PDF report | Publication-ready report rendered from Markdown |
+| Versioned artifact folders | Organized report assets by dataset/model version or experiment folder convention |
+| Artifact index | Optional list of linked files and source paths |
+| Reproducible report package | Documentation, figures, metrics, and rendering outputs |
+
+---
+
+## 📂 Filesystem Convention
+
+Validation output structure:
+
+```text
+valid/
+└── valid_dataset/
+    └── dataset_version/
+        └── detect_timestamp/
+            └── img_size/
+                └── model/
+                    └── run/
+                        ├── confusion_matrix.png
+                        ├── PR_curve.png
+                        ├── P_curve.png
+                        ├── R_curve.png
+                        ├── F1_curve.png
+                        ├── results.png
+                        ├── results.csv
+                        ├── validation_results_summary_run_1.json
+                        └── val_batch0_pred.jpg
+```
+
+Documentation asset exposure:
+
+```text
+docs/
+└── assets/
+    └── validation/
+        └── img-v3/
+            ├── confusion_matrix.png -> original_validation_path/confusion_matrix.png
+            ├── PR_curve.png -> original_validation_path/PR_curve.png
+            ├── F1_curve.png -> original_validation_path/F1_curve.png
+            └── val_batch0_pred.jpg -> original_validation_path/val_batch0_pred.jpg
 ```
 
 ---
 
-### Dependency Version Coupling
+## 🔗 Symbolic Linking Strategy
 
-The pipeline depends on libraries that may change APIs or behaviors.
+Symbolic links expose validation artifacts inside the documentation tree.
 
-**Examples:**
+Example:
 
-- Ultralytics YOLO
-- SAHI
-- pycocotools
-- PyTorch
-- OpenCV
-- Rasterio
+```bash
+ln -s /path/to/validation/run/confusion_matrix.png \
+      docs/assets/validation/img-v3/confusion_matrix.png
+```
 
-**Risk:**
+Benefits:
 
-- Results or execution behavior may change across environments.
-
-**Recommended mitigation:**
-
-- Pin dependency versions.
-- Use `requirements.txt` or `pyproject.toml`.
-- Add Docker for reproducible runtime environments.
+- Avoids duplicating large image artifacts.
+- Preserves a single source of truth.
+- Allows reports to use stable relative paths.
+- Supports multiple dataset versions.
+- Reduces storage overhead.
+- Keeps the documentation folder lightweight.
 
 ---
 
-## 📊 Observability Limitations
+## ⚙️ Core Workflow
 
-### Limited Structured Logging
-
-The system includes logs and error handling but may not provide structured operational observability.
-
-**Risk:**
-
-- Harder to diagnose failures across large batch runs.
-- Difficult to compute runtime and failure statistics.
-
-**Recommended mitigation:**
-
-Use structured logs such as:
-
-```json
-{
-  "run_id": "experiment_001",
-  "image_id": "image_001",
-  "stage": "sahi_inference",
-  "status": "success",
-  "latency_seconds": 4.12,
-  "detections": 58
-}
+```text
+YOLO Validation Run
+        │
+        ▼
+Validation Artifacts Generated
+        │
+        ▼
+Artifact Discovery Script
+        │
+        ▼
+Symbolic Link Creation
+        │
+        ▼
+Dataset-Versioned Documentation Assets
+        │
+        ▼
+Markdown Report References
+        │
+        ▼
+Pandoc + LaTeX Rendering
+        │
+        ▼
+Publication-Ready PDF Report
 ```
 
 ---
 
-### No Central Monitoring
+## 🔍 Detailed System Flow
 
-There is no monitoring dashboard or alerting system.
+### Step 1: Run YOLO Validation
 
-**Risk:**
+The workflow starts after a YOLO validation process has been executed. The validation process generates confusion matrices, metric curves, prediction examples, JSON summaries, and CSV metric outputs.
 
-- Long-running failures may not be visible until execution finishes.
+### Step 2: Generate Structured Validation Artifacts
 
-**Recommended mitigation:**
+The validation run stores outputs inside a structured directory that identifies dataset version, model version, image size, timestamp, run number, and validation configuration.
 
-- Add progress summaries.
-- Export run statistics.
-- Track failed images.
-- Add dashboard support if productionized.
+Example:
 
----
+```text
+valid/valid_dataset/v3/2026-04-15/imgsz_1280/yolo_model/run_1/
+```
 
-## 🧪 Testing Limitations
+### Step 3: Discover Relevant Artifacts
 
-The system would benefit from automated tests around critical transformations.
+The automation script identifies required files for documentation and checks whether each file exists, is readable, is non-empty, and matches the report template.
 
-**High-priority test areas:**
+### Step 4: Create Symbolic Links
 
-- YOLO-to-COCO conversion
-- Bounding box coordinate conversion
-- Class mapping validation
-- Empty prediction handling
-- Missing label handling
-- GPS metadata parsing
-- CSV, GeoJSON, and shapefile export
-- COCO evaluation artifact validation
+The script creates symbolic links from the documentation folder to the original validation outputs.
 
-**Recommended mitigation:**
+Example target structure:
 
-- Add unit tests for conversion functions.
-- Add small synthetic datasets for regression testing.
-- Add integration tests for end-to-end evaluation.
+```text
+docs/assets/validation/img-v3/
+├── confusion_matrix.png
+├── PR_curve.png
+├── P_curve.png
+├── R_curve.png
+├── F1_curve.png
+└── val_batch0_pred.jpg
+```
 
----
+Markdown documentation can then reference assets using relative paths:
 
-## 🚀 Production Readiness Gaps
+```markdown
+![Confusion Matrix](assets/validation/img-v3/confusion_matrix.png)
+![Precision-Recall Curve](assets/validation/img-v3/PR_curve.png)
+```
 
-To become production-ready, the system would require:
+### Step 5: Enrich Markdown Documentation
 
-- Configuration management
-- Containerized environment
-- Dependency pinning
-- Automated tests
-- Structured logging
-- Experiment tracking
-- Parallel or distributed processing
-- Storage abstraction
-- Error retry strategy
-- Monitoring and alerting
-- Security and access controls if deployed with sensitive data
+Markdown documents reference linked artifacts and describe dataset version, model version, training configuration, validation results, metric interpretation, class-level behavior, failure cases, and comparisons between dataset versions.
 
----
+### Step 6: Render Markdown to PDF
 
-## 🎯 Recommended Prioritization
+This optional step uses Pandoc to convert the Markdown document into a PDF when a publication-style report is required.
 
-### High Priority
+Typical command:
 
-- Add configuration file support.
-- Add run manifest / experiment metadata.
-- Add dependency pinning.
-- Add validation for COCO artifacts.
-- Add structured logging.
+```bash
+pandoc report.md \
+  -o report.pdf \
+  --pdf-engine=xelatex \
+  --toc \
+  --number-sections
+```
 
-### Medium Priority
+The PDF rendering layer depends on Pandoc, LaTeX, xelatex, installed fonts, valid Markdown, valid YAML frontmatter, and accessible image assets. This dependency is isolated to documentation rendering and should not be treated as part of the model inference runtime.
 
-- Add multiprocessing.
-- Add qualitative error galleries.
-- Add geospatial completeness report.
-- Add automated plots for SAHI vs direct YOLO comparison.
+### Step 7: Generate Portable Report Package
 
-### Lower Priority
+The final result is a reproducible documentation package.
 
-- Add distributed workers.
-- Add cloud deployment.
-- Add task queues.
-- Add web dashboard.
+Example:
 
-**Important note:**
+```text
+reports/
+└── dataset-v3/
+    ├── dataset-v3-validation-report.md
+    ├── dataset-v3-validation-report.pdf
+    ├── artifact-index.json
+    └── assets/
+        ├── confusion_matrix.png
+        ├── PR_curve.png
+        └── F1_curve.png
+```
 
-Distributed architecture should not be introduced before local modularization, configuration, and reproducibility are solved. Otherwise, the system risks becoming over-engineered without addressing the core maintainability problems.
+For long-term archival or external sharing, copied assets are usually safer than symlinks.
 
 ---
 
-## 📜 Summary
+## 🛠️ Recommended Scripts
 
-The AgriDrone Vision Evaluation Pipeline is technically strong as an applied ML and computer vision evaluation system. Its main value lies in combining YOLO inference, SAHI sliced inference, COCO metrics, geospatial processing, and automated reporting.
+### `link_validation_artifacts.sh`
 
-Its main limitations are not in the conceptual model, but in production engineering concerns:
+Responsibilities:
 
-- orchestration
-- reproducibility
-- scaling
-- structured logging
-- automated testing
-- dependency management
+- Receive source validation run path.
+- Receive target dataset version.
+- Create target documentation asset directory.
+- Validate required artifacts.
+- Create symbolic links.
+- Optionally overwrite existing links.
+- Report missing files.
 
-Addressing these areas would move the project from a research-grade evaluation pipeline toward a production-ready ML engineering system.
+Example:
+
+```bash
+bash scripts/link_validation_artifacts.sh \
+  --source valid/valid_dataset/v3/detect_20260415/imgsz_1280/model/run_1 \
+  --target docs/assets/validation/img-v3
+```
+
+### `validate_report_assets.sh`
+
+Responsibilities:
+
+- Verify symlinks exist.
+- Verify symlink targets exist.
+- Detect broken links.
+- Validate image readability.
+- Validate JSON files.
+- Fail early before PDF rendering.
+
+### `render_markdown_to_pdf.sh`
+
+Responsibilities:
+
+- Validate Markdown source.
+- Run Pandoc.
+- Use configured LaTeX engine.
+- Output PDF.
+- Preserve render logs.
+
+---
+
+## ⚙️ Recommended Configuration
+
+```yaml
+reporting:
+  dataset_version: img-v3
+  model_version: yolo-best-run-1
+  validation_run_path: valid/valid_dataset/v3/detect_20260415/imgsz_1280/model/run_1
+  documentation_assets_dir: docs/assets/validation/img-v3
+  markdown_report: docs/reports/dataset-v3-validation-report.md
+  pdf_output: docs/reports/dataset-v3-validation-report.pdf
+
+artifacts:
+  required:
+    - confusion_matrix.png
+    - PR_curve.png
+    - P_curve.png
+    - R_curve.png
+    - F1_curve.png
+    - validation_results_summary_run_1.json
+  optional:
+    - results.png
+    - val_batch0_pred.jpg
+    - val_batch1_pred.jpg
+
+rendering:
+  engine: xelatex
+  toc: true
+  number_sections: true
+  fail_on_missing_assets: true
+```
+
+---
+
+## ⚠️ Risks and Limitations
+
+### Broken Symbolic Links
+
+If original validation artifacts are moved or deleted, documentation links become invalid.
+
+Recommended mitigation:
+
+- Validate symlink targets before rendering.
+- Store artifact index with source and target paths.
+- Archive resolved assets for publication.
+- Avoid moving original validation runs after report generation.
+
+### Tight Coupling to Filesystem Structure
+
+The current approach depends heavily on specific directory conventions.
+
+Recommended mitigation:
+
+- Move paths into configuration files.
+- Avoid hardcoded paths.
+- Support CLI arguments.
+- Generate an artifact manifest.
+- Validate expected folder layout.
+
+### Environment Dependency
+
+PDF rendering depends on Pandoc, LaTeX packages, xelatex, fonts, OS-level packages, Markdown syntax, and YAML frontmatter.
+
+Recommended mitigation:
+
+- Use Docker for report rendering.
+- Pin Pandoc and LaTeX versions.
+- Provide a `Dockerfile.report`.
+- Store render logs.
+- Document system dependencies.
+
+### Permission and Locking Issues
+
+On Linux systems, package managers or filesystem locks can affect dependency installation or file operations.
+
+Possible issues include `apt` locks, `dpkg` locks, read-only mounts, restricted symbolic link permissions, and missing write permissions in documentation folders.
+
+### Documentation Rendering Fragility
+
+PDF rendering can fail because of invalid YAML frontmatter, unsupported fonts, broken image paths, malformed Markdown tables, LaTeX special characters, unsupported separators, or non-UTF-8 characters.
+
+### No Formal Retry Logic
+
+This module is batch-oriented but does not include retry mechanisms.
+
+Recommended mitigation:
+
+- Log failed files.
+- Allow rerun with `--overwrite`.
+- Generate missing artifact report.
+- Support dry-run mode.
+- Add idempotent link creation.
+
+---
+
+## 🚀 Production Improvements
+
+Recommended improvements:
+
+- YAML-based configuration.
+- Artifact manifest generation.
+- CLI interface.
+- Dry-run mode.
+- Overwrite policy.
+- Broken-link validation.
+- Standalone asset export mode.
+- Dockerized Pandoc/LaTeX rendering.
+- Markdown linting.
+- PDF render logs.
+- Experiment registry integration.
+- Optional MLflow or ClearML artifact linking if the broader experimentation workflow uses those tools.
+- GitHub Actions report rendering.
+- Release-ready report packaging.
+
+---
+
+## 🏗️ Proposed Production Architecture
+
+```text
+Validation Run Artifacts
+        │
+        ▼
+Artifact Manifest Generator
+        │
+        ▼
+Asset Linker / Resolver
+        │
+        ▼
+Documentation Asset Registry
+        │
+        ▼
+Markdown Report Builder
+        │
+        ▼
+Asset Validation Layer
+        │
+        ▼
+Pandoc / LaTeX Renderer
+        │
+        ▼
+PDF + Markdown Report Package
+```
+
+---
+
+## 📂 Suggested Repository Placement
+
+Recommended path:
+
+```text
+docs/validation-artifact-reporting-pipeline.md
+```
+
+Recommended support scripts:
+
+```text
+scripts/
+├── link_validation_artifacts.sh
+├── validate_report_assets.sh
+└── render_markdown_to_pdf.sh
+```
+
+Recommended report folders:
+
+```text
+reports/
+├── dataset-v1/
+├── dataset-v2/
+└── dataset-v3/
+```
+
+Recommended documentation assets:
+
+```text
+docs/assets/validation/
+├── img-v1/
+├── img-v2/
+└── img-v3/
+```
+
+---
+
+## 📊 Portfolio Summary
+
+This component demonstrates reproducible reporting and documentation automation for computer vision experiments.
+
+It automates the connection between YOLO validation outputs and technical documentation by linking validation artifacts—such as confusion matrices, metric curves, prediction examples, and JSON summaries—into Markdown reports. These reports can then be rendered into publication-ready PDF documents using Pandoc and LaTeX.
+
+The module supports dataset-versioned reporting, avoids duplication of experimental outputs, and preserves a single source of truth for model validation artifacts. It is especially useful in research-grade ML workflows where experiment traceability, report reproducibility, and artifact organization are critical. It should be presented as a supporting documentation module, not as the core of the computer vision system.
+
+---
+
+## 🔒 Privacy and Confidentiality Notice
+
+This documentation describes a generalized reporting automation pipeline.
+
+It should not expose private datasets, confidential validation images, client names, sensitive field locations, internal filesystem paths, proprietary model weights, production credentials, or unpublished experimental results.
+
+Any public repository should use anonymized, synthetic, or non-sensitive examples.
