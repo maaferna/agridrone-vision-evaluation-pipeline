@@ -80,6 +80,10 @@ Main modules:
 - YOLO Inference Service
 - SAHI Sliced Inference Service
 - YOLO / SAHI Inference and Geospatial Export Service
+- Video Tracking Processor
+- Object Counter
+- Frame Annotation Renderer
+- SRT Artifact Generator
 - Prediction Normalization Module
 - Geo-Metadata Extraction Module
 - COCO Conversion Module
@@ -116,6 +120,8 @@ Generated artifacts:
 - Precision, recall, F1, AP50, and AP50:95 plots
 - GeoJSON, CSV, and shapefile spatial exports
 - Annotated image outputs
+- JGW world files for styled JPEG rasters
+- Optional GeoTIFF raster outputs
 
 ---
 
@@ -222,6 +228,120 @@ This service currently combines inference, visualization, metadata extraction, a
 
 ---
 
+### Video Tracking Processor
+
+**Responsibility:** Process video inputs using YOLO tracking and OpenCV frame processing.
+
+Inputs:
+
+- input video
+- trained YOLO model
+- confidence threshold
+- class dictionary
+- class color configuration
+- output directory
+
+Outputs:
+
+- annotated video
+- tracking summary JSON
+- optional SRT frame summaries
+- processing logs
+
+Technical concern:
+
+Video processing introduces temporal state. Unique object counts depend on the stability and availability of YOLO tracking IDs such as `box.id`.
+
+---
+
+### Object Counter
+
+**Responsibility:** Maintain unique object counts across video frames.
+
+Responsibilities:
+
+- track unique IDs by class
+- separate frame-level detections from unique-object counts
+- handle missing or unstable tracking IDs
+- persist class-level count summaries
+
+Technical concern:
+
+A detection count per frame is not equivalent to a unique-object count across a video. Counting logic must explicitly record how missing IDs or ID switches are handled.
+
+---
+
+### Frame Annotation Renderer
+
+**Responsibility:** Render custom visual overlays on video frames.
+
+Responsibilities:
+
+- draw bounding boxes
+- apply configured class colors
+- render confidence labels and tracking IDs
+- render total and per-class counters
+- preserve original video color fidelity
+
+Technical concern:
+
+OpenCV uses BGR images while PIL and some model visualization paths may use RGB. Incorrect color conversion can degrade or distort video output.
+
+---
+
+### SRT Artifact Generator
+
+**Responsibility:** Generate optional frame-aligned subtitle metadata.
+
+Outputs may include:
+
+```text
+frame_index
+start_time
+end_time
+class_counts
+total_detections
+unique_tracked_objects
+```
+
+Technical concern:
+
+SRT outputs require synchronization with FPS, frame index, and processed-video duration.
+
+### Augmentation Control Module
+
+**Responsibility:** Control baseline and stochastic training augmentation policies.
+
+Responsibilities:
+
+- Distinguish baseline runs from augmented runs.
+- Apply configured Ultralytics augmentation parameters.
+- Apply Albumentations transforms when configured.
+- Persist effective augmentation configuration.
+- Prevent confusion between declared and actually applied augmentation behavior.
+
+Technical concern:
+
+A conceptual `augment=False` flag may not fully describe internal library behavior. Architecture documentation should treat augmentation settings as experiment-defining metadata.
+
+---
+
+### GPU Execution Layer
+
+**Responsibility:** Manage single-GPU, DataParallel, and Distributed Data Parallel execution.
+
+Responsibilities:
+
+- Select execution mode.
+- Launch DDP subprocesses when configured.
+- Track device IDs and distributed rank where applicable.
+- Stabilize CUDA memory across runs.
+- Record memory-related runtime configuration.
+
+Technical concern:
+
+DDP provides distributed training execution, not persistent asynchronous processing. The architecture remains a synchronous batch pipeline unless a formal job queue or worker system is introduced.
+
 ### Prediction Normalization Module
 
 **Responsibility:** Convert raw model detections into consistent prediction artifacts.
@@ -263,6 +383,67 @@ Technical concern:
 Drone metadata may be incomplete or inconsistent. The system should handle missing GPS, DEM, or altitude metadata through fallback logic and explicit warnings.
 
 ---
+
+### Raster Georeferencing Service
+
+**Responsibility:** Convert styled detection images into georeferenced raster artifacts for GIS tools.
+
+Inputs:
+
+- original image metadata
+- styled JPEG output
+- GPS/EXIF metadata
+- altitude/FOV assumptions when available
+- optional `GPSImgDirection`
+- target CRS assumptions
+
+Outputs:
+
+- styled JPEG with copied EXIF/XMP metadata
+- `.jgw` world file
+- optional GeoTIFF
+- raster georeferencing manifest
+
+Technical concern:
+
+A `.jgw` file stores an affine transform but does not store CRS information. The CRS and units must be persisted separately to avoid spatial misinterpretation.
+
+---
+
+### External GIS Tooling Layer
+
+**Responsibility:** Integrate system-level GIS tools required for metadata preservation, raster conversion, and QGIS automation.
+
+Representative tools:
+
+```text
+ExifTool
+GDAL / OGR
+gdal_translate
+gdalbuildvrt
+QGIS / PyQGIS
+```
+
+Technical concern:
+
+These are system-level dependencies, not ordinary Python packages. They affect environment reproducibility, Dockerization, deployment, and failure handling.
+
+---
+
+### QGIS Automation Module
+
+**Responsibility:** Automate loading of georeferenced raster outputs into QGIS.
+
+Behavior:
+
+- iterate over styled `.jpg` outputs
+- ignore `.jgw` files as explicit layers
+- allow QGIS to apply `.jgw` sidecar files implicitly
+- optionally load GeoTIFF outputs directly
+
+Technical concern:
+
+EXIF GPS metadata alone is not sufficient for QGIS raster positioning. QGIS raster georeferencing should be based on `.jgw` or GeoTIFF outputs.
 
 ### COCO Conversion Module
 
@@ -374,6 +555,8 @@ Reporting should preserve raw metrics and avoid hiding model weaknesses behind a
 8. pycocotools evaluation is executed when COCO evaluation is required.
 9. Global and per-class metrics are generated.
 10. JSON, CSV, styled images, GeoJSON, QGIS summaries, and shapefiles are exported.
+11. Styled JPEG raster outputs can be copied with EXIF/XMP metadata, paired with `.jgw` world files, optionally converted to GeoTIFF, and batch-loaded into QGIS through PyQGIS.
+12. Video inference can process frames through `model.track()`, count unique objects using tracking IDs, render annotated video, and optionally export SRT frame summaries.
 ```
 
 ---
@@ -523,6 +706,110 @@ Use structured logs with fields such as:
   "detections": 37
 }
 ```
+
+---
+
+## 🧠 Implementation-Level Architecture Notes
+
+### Video Tracking Boundary
+
+Video inference should be treated as a distinct inference path because it introduces temporal state, frame decoding, tracking IDs, overlay rendering, video encoding, and optional SRT generation.
+
+Recommended architectural boundary:
+
+```text
+VideoCapture
+    ↓
+YOLO model.track()
+    ↓
+ObjectCounter
+    ↓
+FrameAnnotationRenderer
+    ↓
+VideoWriter + JSON/SRT serializers
+```
+
+The system remains synchronous and frame-based unless a formal video job queue or worker layer is introduced.
+
+### Video Artifact Consistency
+
+Annotated videos, JSON summaries, and SRT outputs should be promoted to final paths only after the video job completes successfully. Long-running video jobs can otherwise leave partial but misleading artifacts.
+
+### Multi-GPU Training Boundary
+
+The training service may execute under single-GPU mode, PyTorch DataParallel, or Distributed Data Parallel. This is not just an infrastructure detail: it affects metric collection, checkpoint ownership, CUDA memory pressure, reproducibility, and output paths.
+
+Architectural implication:
+
+```text
+Training Service
+  ├── Single GPU execution
+  ├── DataParallel execution
+  └── Distributed Data Parallel execution
+        └── requires explicit checkpoint and metric lineage tracking
+```
+
+### Post-Training Metric Recovery
+
+The conceptual training flow is usually described as:
+
+```text
+train model → receive metrics → persist summary
+```
+
+The implementation may require a defensive branch:
+
+```text
+train model
+   ├── metrics returned → persist directly
+   └── metrics missing / None → load generated best.pt → run validation → recover metrics
+```
+
+This behavior should be treated as part of the architecture because it affects the source of truth for metrics and model comparison.
+
+### Checkpoint Lineage and Ownership
+
+Every validation or inference run should record the exact checkpoint used. At minimum, summaries should include:
+
+```text
+run_id
+training_run_id
+model_path
+checkpoint_hash_or_size
+source_results_csv
+args_yaml_path
+selected_metric_row
+img_size
+model_family
+seed
+```
+
+Without this lineage, a multi-run experiment can accidentally validate a stale or incorrect `best.pt`.
+
+### Local-First Artifact Policy
+
+ClearML improves experiment tracking, but the local artifact store should remain authoritative. The system should persist local JSON/CSV summaries before or independently from remote logging. ClearML failures should be captured as tracking failures, not core validation or inference failures.
+
+### Baseline, Augmentation, and Runtime Lineage
+
+The architecture should treat the following as first-class experiment metadata:
+
+```text
+augmentation_policy
+effective_augmentation_parameters
+multi_gpu_mode
+distributed_processes
+cuda_memory_config
+ultralytics_output_dir
+project_name_sanitized
+```
+
+These fields are necessary because the implementation includes baseline/augmented run separation, DP/DDP behavior, possible Ultralytics folder auto-increment, and CUDA memory stabilization.
+
+### Distributed-Training-Enabled, Not Fully Distributed
+
+The system includes distributed training capabilities through PyTorch DDP, but the overall platform is not a distributed production system. It remains a research-grade batch pipeline with distributed GPU execution in the training layer.
+
 
 ---
 

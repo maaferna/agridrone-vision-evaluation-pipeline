@@ -262,6 +262,8 @@ summary plots
 
 Global metrics are useful for comparing experimental runs, but they should not be interpreted without reviewing per-class results.
 
+> In addition to standard validation splits, models are evaluated on independently labeled high-resolution (4K) imagery to assess generalization under real-world deployment conditions, where image resolution and object density differ from the training data.
+
 ---
 
 ## SAHI vs Direct YOLO Evaluation
@@ -529,6 +531,89 @@ docs/yolo-dataset-validation-benchmarking-service.md
 Both evaluation paths are useful, but they should not be treated as identical unless their configurations, datasets, thresholds, and metric definitions are documented.
 
 ---
+## Implementation-Level Evaluation Considerations
+
+### YOLO `max_det` vs COCO `maxDets`
+
+The evaluation documentation must distinguish two similar but different controls:
+
+| Parameter | Stage | Meaning |
+|---|---|---|
+| `max_det` | YOLO validation / inference | Maximum detections produced or retained per image by the YOLO runtime |
+| `maxDets` | COCO evaluation | Detection limits used by `pycocotools` when computing AP/AR |
+
+Both can affect results. Reporting only one of them is not sufficient for reproducible comparison.
+
+### Batch Size and Metric Stability
+
+Batch size should be recorded with every validation and evaluation result. Very small batch sizes, especially batch size 1, may create unstable training dynamics or unexpectedly optimistic validation outcomes in some configurations.
+
+Recommended fields:
+
+```text
+batch_size
+effective_batch_size
+multi_gpu_mode
+model_family
+img_size
+```
+
+Unexpectedly high metrics should be reviewed with qualitative examples and class-level analysis.
+
+
+### Model Selection Score Is a Project-Specific Heuristic
+
+The best-model selection utility may use a weighted score such as:
+
+```text
+score = 0.7 * mAP50-95 + 0.3 * F1
+```
+
+This is a practical heuristic, not a universal definition of the best model. If operational requirements prioritize recall, precision, or specific classes, the weighting should be configurable and documented per experiment.
+
+### Post-Training Metric Recovery
+
+When training does not produce complete metric objects, evaluation may be executed immediately after training on the generated `best.pt` checkpoint. Evaluation reports should state whether metrics came from:
+
+```text
+training return object
+results.csv
+YOLO-native post-training validation
+COCO conversion and pycocotools evaluation
+```
+
+### Resolution-Mismatch Reporting
+
+Evaluation summaries should record:
+
+```text
+train_img_size
+validation_img_size
+inference_img_size
+sahi_slice_size
+resolution_mismatch
+```
+
+This is necessary because high-resolution agricultural imagery can expose scale effects that are not visible in standard resized validation splits.
+
+---
+
+### Video Tracking Outputs Are Not COCO Evaluation Outputs
+
+Video tracking artifacts such as annotated MP4 files, unique object counts, and `.srt` frame summaries are operational inference outputs. They should not be confused with COCO evaluation artifacts unless a separate frame-level ground truth and evaluation protocol is defined.
+
+Important distinction:
+
+```text
+COCO evaluation
+    image-level ground truth and prediction comparison
+
+video tracking summary
+    temporal inference artifact based on tracker IDs
+```
+
+If video metrics are required, the project should define a separate evaluation protocol for tracking quality, ID switches, frame-level precision/recall, or object counting error.
+
 ## Recommended Future Improvements
 
 - Add experiment tracking with `run_id`.

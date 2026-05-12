@@ -33,7 +33,7 @@ However, it is not yet fully production-ready because it lacks:
 - ❌ Formal orchestration
 - ❌ Robust retry logic
 - ❌ Distributed processing
-- ❌ Experiment tracking
+- ⚠️ Experiment tracking exists through ClearML, but local manifests and tracking isolation still need hardening
 - ❌ Automated testing coverage
 
 ---
@@ -101,6 +101,101 @@ There is no formal asynchronous processing layer.
 - For local research execution, add multiprocessing first before over-engineering into distributed queues.
 
 ---
+
+### Distributed Training Is Not a Distributed Production System
+
+The project may use PyTorch DataParallel or Distributed Data Parallel for multi-GPU training. This means the training layer can use distributed GPU execution, but the overall architecture is still not a distributed production platform.
+
+**Risk:**
+
+- The system may be overstated as a distributed system when it is actually a distributed-training-enabled research pipeline.
+- DDP subprocesses can introduce debugging and memory complexity without solving orchestration, retries, monitoring, or job scheduling.
+
+**Recommended mitigation:**
+
+- Describe the system as a distributed-training-enabled batch pipeline.
+- Avoid claiming production-grade distributed architecture unless queues, workers, APIs, monitoring, and storage abstraction are implemented.
+
+---
+
+### Augmentation Reproducibility Risk
+
+The first run may act as a reproducible baseline, while later runs may use dynamic augmentations.
+
+**Risk:**
+
+- Baseline and augmented runs may be compared incorrectly.
+- High-level flags may not fully describe effective Ultralytics augmentation behavior.
+- Albumentations and Ultralytics parameters may produce different experimental distributions.
+
+**Recommended mitigation:**
+
+- Persist the complete effective augmentation configuration.
+- Mark each run as baseline, augmented, or custom.
+- Record augmentation parameters in `summary.json` and run manifests.
+
+---
+
+### Ultralytics Output Folder Collision
+
+Ultralytics may auto-increment output folders when paths collide.
+
+**Risk:**
+
+- Downstream components may read `results` while the actual run was saved to `results2`.
+- Model selection and validation may use stale or incorrect artifacts.
+
+**Recommended mitigation:**
+
+- Resolve actual output directories from run metadata.
+- Persist `ultralytics_output_dir`.
+- Avoid assuming fixed folder names.
+
+---
+
+### CUDA Memory Fragmentation and Large-Model OOM
+
+Large YOLOv11 variants, 2048/4K imagery, high batch sizes, and DDP can trigger CUDA OOM or memory fragmentation.
+
+**Recommended mitigation:**
+
+- Record memory configuration per run.
+- Tune batch size and image size by model family.
+- Use memory hygiene steps when needed:
+
+```text
+torch.cuda.empty_cache()
+gc.collect()
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+```
+
+---
+
+### Batch Size Sensitivity
+
+Very small batch sizes may produce unstable or artificially optimistic metrics in some configurations.
+
+**Recommended mitigation:**
+
+- Persist batch size in every metric summary.
+- Avoid comparing experiments with different batch sizes without qualification.
+- Treat unexpectedly high metrics as requiring qualitative and statistical review.
+
+---
+
+### Project Name and Path Sanitization
+
+Project names and dataset names are used in filesystem paths.
+
+**Risk:**
+
+- Invalid characters can break path creation.
+- Similar names can cause folder collision or artifact discovery errors.
+
+**Recommended mitigation:**
+
+- Sanitize project and dataset names before filesystem use.
+- Store both raw and sanitized names in the run manifest.
 
 ## 📊 Scalability Limitations
 
@@ -399,6 +494,151 @@ AGL and field-of-view calculations depend on altitude, terrain, and camera metad
 
 ---
 
+### Raster Georeferencing and QGIS Integration Limitations
+
+Styled JPEGs require explicit raster georeferencing to be positioned correctly in QGIS.
+
+**Key risks:**
+
+- EXIF GPS metadata is not equivalent to a raster geotransform.
+- `.jgw` world files do not store CRS.
+- Pixel scale derived from altitude/FOV can be approximate.
+- `GPSImgDirection` may be missing or unreliable.
+- QGIS may apply `.jgw` implicitly only when the basename matches the raster.
+- GeoTIFF fallback depends on GDAL availability.
+
+**Recommended mitigation:**
+
+- Generate `.jgw` files for styled JPEG outputs.
+- Persist CRS and world-file units in sidecar metadata.
+- Prefer GeoTIFF when CRS ambiguity or archival robustness matters.
+- Validate raster placement in QGIS with known reference layers.
+- Treat raster placement as approximate unless camera calibration, terrain correction, and CRS handling are validated.
+
+---
+
+### External GIS Tool Dependency
+
+The raster post-processing workflow may depend on system-level tools:
+
+```text
+ExifTool
+GDAL / OGR
+gdal_translate
+QGIS / PyQGIS
+```
+
+**Risk:**
+
+- Missing binaries can break metadata copying, GeoTIFF conversion, or batch GIS loading.
+- These dependencies complicate Conda/Docker environment reproducibility.
+- Subprocess calls can become CPU/I/O bottlenecks at large scale.
+
+**Recommended mitigation:**
+
+- Validate external tools before batch execution.
+- Containerize GIS runtime dependencies when possible.
+- Track per-stage timings for EXIF copy, JGW generation, GDAL conversion, and QGIS loading.
+- Separate GPU inference from CPU/GIS post-processing for large production workloads.
+
+---
+
+### World File CRS Ambiguity
+
+World files contain transform coefficients but no coordinate reference system.
+
+**Risk:**
+
+- A `.jgw` generated in degrees can be misinterpreted as meters.
+- A UTM-based world file can be loaded under the wrong CRS.
+- Raster overlays may appear plausible but spatially wrong.
+
+**Recommended mitigation:**
+
+- Store `crs`, `world_file_units`, `transform_origin`, and `rotation_source` in a sidecar manifest.
+- Generate GeoTIFF outputs when unambiguous embedded CRS is required.
+
+### Video Tracking and Object Counting Limitations
+
+Video inference depends on temporal tracking behavior.
+
+**Key risks:**
+
+- Unique object counts depend on stable `box.id` values.
+- Track IDs may switch during occlusion or re-entry.
+- `box.id` may be missing in some frames.
+- Per-frame detections can be confused with unique-object counts.
+- Long videos can leave partial MP4/JSON/SRT outputs if processing fails mid-run.
+
+**Recommended mitigation:**
+
+- Persist frames with missing tracking IDs.
+- Separate frame-level detections from unique tracked-object counts.
+- Validate counts visually on sampled video segments.
+- Use temporary output paths and promote artifacts only after successful completion.
+- Record tracker configuration and Ultralytics version.
+
+---
+
+### Video Rendering and Color-Space Limitations
+
+Video overlays are sensitive to color-space handling.
+
+**Key risks:**
+
+- OpenCV uses BGR frames while PIL commonly uses RGB.
+- Native YOLO plotting may not preserve required class colors or custom overlay behavior.
+- Incorrect conversion can degrade video color fidelity.
+
+**Recommended mitigation:**
+
+- Define a strict BGR/RGB contract.
+- Use custom OpenCV rendering for configured class colors and counters.
+- Add sample-frame regression checks.
+
+---
+
+### Video Performance Bottlenecks
+
+Video processing is not only model-inference-bound.
+
+**Potential bottlenecks:**
+
+```text
+frame decoding
+YOLO tracking
+ObjectCounter updates
+OpenCV overlay rendering
+video encoding
+SRT generation
+filesystem writes
+```
+
+**Recommended mitigation:**
+
+- Track per-stage timings.
+- Record effective processing FPS.
+- Consider a worker/queue model only after local modularization is stable.
+
+---
+
+### HEIC / HEIF Metadata Extraction Risk
+
+Some drone workflows may include HEIC/HEIF images, where metadata extraction behavior differs from JPG.
+
+**Risk:**
+
+- PIL may fail to read HEIC metadata.
+- `pillow-heif` may expose metadata differently.
+- ExifTool may be required for reliable GPS extraction.
+- Dataset-specific GPS hemisphere defaults can become hidden assumptions.
+
+**Recommended mitigation:**
+
+- Use a format-aware fallback chain.
+- Record metadata extraction strategy.
+- Configure hemisphere defaults per project rather than hardcoding them.
+
 ## 🧪 Reproducibility Limitations
 
 ### No Formal Experiment Registry
@@ -514,6 +754,12 @@ The system would benefit from automated tests around critical transformations.
 - Missing label handling
 - GPS metadata parsing
 - CSV, GeoJSON, and shapefile export
+- JGW world file validation
+- GeoTIFF conversion validation
+- PyQGIS batch loading validation
+- Video tracking ID stability validation
+- SRT synchronization validation
+- OpenCV color-space rendering validation
 - COCO evaluation artifact validation
 
 **Recommended mitigation:**
@@ -569,6 +815,85 @@ To become production-ready, the system would require:
 **Important note:**
 
 Distributed architecture should not be introduced before local modularization, configuration, and reproducibility are solved. Otherwise, the system risks becoming over-engineered without addressing the core maintainability problems.
+
+---
+
+## 🔬 Implementation-Level Gaps Identified During Architecture Audit
+
+### Multi-GPU Execution Complexity
+
+The project may use single-GPU execution, DataParallel, or DDP. Multi-GPU execution introduces additional complexity around metric collection, checkpoint ownership, seed handling, and CUDA memory behavior.
+
+**Risk:** A training run can complete successfully while metrics are missing, incomplete, or associated with an unexpected output path.
+
+**Recommended mitigation:** Persist execution mode, device list, distributed rank where applicable, resolved seed, checkpoint path, and metric source in each run summary.
+
+---
+
+### Training Metric Fallback Is Not Yet a Formal Contract
+
+The pipeline may recover metrics by validating `best.pt` when `model.train()` returns incomplete or `None` metrics.
+
+**Risk:** Different runs may derive metrics from different sources without that distinction being explicit.
+
+**Recommended mitigation:** Add a `metric_source` field to every summary:
+
+```text
+training_return
+results_csv
+post_training_validation
+coco_evaluation
+```
+
+---
+
+### Checkpoint Lineage Risk
+
+Multi-run training and dynamic folders increase the risk of validating or deploying the wrong `best.pt`.
+
+**Risk:** Reported metrics may not correspond to the actual model used for inference.
+
+**Recommended mitigation:** Store `training_run_id`, `checkpoint_path`, checkpoint hash or file size, `args.yaml` path, source `results.csv`, and selected metric row in validation and inference outputs.
+
+---
+
+### Dynamic Seed Strategy Requires Explicit Persistence
+
+If seeds are composed from base seed, run index, timestamp, distributed rank, or random component, the run is only reproducible if the resolved seed is persisted.
+
+**Risk:** Experiments may be traceable but not exactly reproducible.
+
+**Recommended mitigation:** Persist both the seed-generation inputs and the final resolved seed.
+
+---
+
+### Model Weight Resolution and Download Behavior
+
+If the system can recover or download missing model weights, that behavior should be documented as an explicit model resolution strategy.
+
+**Risk:** Runs may silently use a fallback base model or downloaded checkpoint that differs from the intended trained artifact.
+
+**Recommended mitigation:** Log weight source, download URL or registry source when applicable, checksum, and whether the model is a base model or trained checkpoint.
+
+---
+
+### Champion Model Selection by Configuration
+
+A single global `best.pt` may not be optimal across image sizes, inference modes, datasets, crop stages, or deployment contexts.
+
+**Risk:** A model selected globally may underperform in a specific operational scenario.
+
+**Recommended mitigation:** Select champion models by configuration scope:
+
+```text
+dataset_version
+model_family
+img_size
+inference_mode
+slice_size
+confidence_threshold
+operational objective
+```
 
 ---
 

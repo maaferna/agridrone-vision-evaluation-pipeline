@@ -453,6 +453,33 @@ Recommended mitigation:
 
 ---
 
+## 🧠 Artifact Lineage Requirements
+
+Validation documentation should reference not only image artifacts and curves, but also the run metadata that proves where those artifacts came from.
+
+Recommended artifact index fields:
+
+```text
+run_id
+validation_run_id
+training_run_id
+model_checkpoint
+source_results_csv
+args_yaml_path
+metric_source
+img_size
+batch_size
+max_det
+maxDets
+seed
+artifact_source_path
+artifact_link_path
+```
+
+This prevents documentation from becoming visually correct but disconnected from the actual experiment lineage.
+
+---
+
 ## 🚀 Production Improvements
 
 Recommended improvements:

@@ -351,6 +351,35 @@ Technical concern:
 
 Cache cleanup does not guarantee full determinism. It should be treated as a memory hygiene step, not as a complete reproducibility mechanism.
 
+### Step 6B: Python Garbage Collection and Allocator Configuration
+
+For large models, large images, or repeated validation/training cycles, CUDA memory fragmentation can affect runtime stability.
+
+When used, the following should be recorded in the validation summary or run manifest:
+
+```text
+torch.cuda.empty_cache()
+gc.collect()
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+```
+
+These settings are operational controls. They do not guarantee determinism, but they can materially affect whether large experiments complete successfully.
+
+---
+
+### Step 6C: DDP Subprocess Context
+
+If validation or post-training validation follows DDP-based training, the summary should record that the source training run used distributed execution.
+
+Recommended fields:
+
+```text
+source_training_multi_gpu_mode
+source_training_device_count
+source_training_distributed_rank_policy
+```
+
+
 ---
 
 ### Step 7: Execute YOLO Validation
@@ -640,6 +669,31 @@ Mitigation:
 
 ---
 
+### Baseline vs Augmented Metrics
+
+Validation summaries should record whether the model being validated came from a baseline run or an augmented run.
+
+Risk:
+
+- A baseline run and an augmented run may not be comparable without acknowledging augmentation policy.
+- Reported metrics can be misleading if augmentation differences are hidden.
+
+Mitigation:
+
+- Persist `augmentation_policy`.
+- Persist effective augmentation parameters.
+- Include `metric_source` and `training_run_id`.
+
+### Ultralytics Output Directory Ambiguity
+
+Validation should not assume that the training output folder is always named `results`. Ultralytics may auto-increment output paths when collisions occur.
+
+Mitigation:
+
+- Read actual output paths from run metadata.
+- Persist `ultralytics_output_dir`.
+- Validate that `best.pt`, `args.yaml`, and `results.csv` belong to the same run.
+
 ### ClearML Failure Coupling
 
 If ClearML logging fails, core validation should still complete.
@@ -746,6 +800,67 @@ Before executing validation, check:
     "clearml_task_id": "task-id-or-null",
     "clearml_status": "success"
   }
+}
+```
+
+---
+
+## 🧠 Additional Implementation Contracts
+
+### Metric Source Contract
+
+Every validation summary should explicitly state where metrics came from:
+
+```text
+model.val()
+post_training_validation
+results.csv
+ClearML artifact
+```
+
+This prevents ambiguity when training metrics are recovered after a run rather than returned directly by `model.train()`.
+
+### Checkpoint Ownership Contract
+
+Validation should not only receive a `best.pt` path; it should verify and persist checkpoint ownership.
+
+Recommended fields:
+
+```text
+training_run_id
+checkpoint_path
+checkpoint_hash_or_file_size
+source_args_yaml
+source_results_csv
+selected_metric_row
+```
+
+### `max_det` Recording
+
+YOLO validation and inference may use `max_det`, which is distinct from COCO `maxDets`. The validation summary should persist `max_det` whenever it is configured.
+
+### Resolution Compatibility Fields
+
+Validation summaries should persist:
+
+```text
+train_img_size
+validation_img_size
+inference_img_size_if_applicable
+sahi_slice_size_if_applicable
+```
+
+These fields are required to interpret model behavior across 2048/4K imagery and standard training resolutions.
+
+### ClearML Local-First Policy
+
+Local JSON persistence should complete even if ClearML logging fails. The validation summary should include:
+
+```json
+{
+  "clearml_enabled": true,
+  "clearml_status": "success | failed | disabled",
+  "clearml_error": null
 }
 ```
 

@@ -141,6 +141,44 @@ Use SAHI when objects of interest are small relative to the full image or when d
 
 ---
 
+## 3B. Baseline and Augmentation Methodology
+
+The training methodology should distinguish baseline and exploratory runs.
+
+Recommended interpretation:
+
+```text
+baseline run
+    controlled / minimal augmentations
+    intended for reproducible reference
+
+augmented runs
+    dynamic or stochastic augmentations
+    intended to explore robustness and variability
+```
+
+This distinction is important because runs with different augmentation policies are not equivalent. Reports should state whether a run is baseline, augmented, or custom-configured.
+
+The effective augmentation configuration should include both high-level flags and concrete parameters:
+
+```text
+augment
+mosaic
+mixup
+hsv_h / hsv_s / hsv_v
+translate
+scale
+perspective
+fliplr / flipud
+Albumentations transforms
+```
+
+Caution:
+
+```text
+Ultralytics may still apply internal/default transformations depending on configuration. Therefore, the effective training configuration should be persisted, not inferred only from a single flag.
+```
+
 ## 4. Inference Parameters
 
 Important inference parameters include:
@@ -250,6 +288,107 @@ The inference/export stage generates spatially enriched detection artifacts. Unl
 ```
 
 ---
+
+## 6C. Raster Georeferencing and QGIS Loading Methodology
+
+The methodology includes an optional raster georeferencing path for styled detection images.
+
+This path is different from GeoJSON/Shapefile export:
+
+```text
+vector export
+    detections → spatial features
+
+raster georeferencing
+    styled image → JPEG + JGW or GeoTIFF
+```
+
+Operational steps:
+
+1. Generate the styled JPEG with detections.
+2. Copy full EXIF/XMP metadata from the source image to the styled image.
+3. Generate a `.jgw` world file with the affine transform.
+4. Record CRS assumptions because world files do not store CRS.
+5. Optionally use `GPSImgDirection` for rotation.
+6. Optionally convert JPEG + JGW into GeoTIFF with GDAL.
+7. Batch-load the `.jpg` files into QGIS using PyQGIS while QGIS applies matching `.jgw` files implicitly.
+
+Important methodological caution:
+
+```text
+EXIF GPS metadata is useful for provenance, but QGIS does not reliably use EXIF GPS alone as raster georeferencing. A world file or GeoTIFF is required for raster placement.
+```
+
+Recommended detailed document:
+
+```text
+docs/raster-georeferencing-qgis-automation-pipeline.md
+```
+
+## 6D. Video Tracking Inference Methodology
+
+Video inference is a separate methodological branch from static image and SAHI inference.
+
+Unlike image inference, video inference includes temporal state:
+
+```text
+video frame
+    ↓
+YOLO model.track()
+    ↓
+tracking ID extraction
+    ↓
+unique object counting
+    ↓
+annotated frame rendering
+    ↓
+video / JSON / SRT output
+```
+
+The processor should distinguish:
+
+```text
+frame-level detections
+    detections observed in a single frame
+
+unique tracked objects
+    distinct tracking IDs accumulated across the video
+```
+
+Recommended outputs:
+
+```text
+annotated_video.mp4
+tracking_summary.json
+frame_level_detections.srt
+processing_log.json
+```
+
+Recommended detailed document:
+
+```text
+docs/yolo-video-inference-object-tracking-processor.md
+```
+
+Important methodological caution:
+
+```text
+Unique object counts are only as reliable as tracker ID stability. Missing IDs, ID switches, occlusion, or tracker resets can affect final counts.
+```
+
+Recommended video performance fields:
+
+```text
+mean_decode_ms
+mean_track_ms
+mean_render_ms
+mean_write_ms
+effective_processing_fps
+frames_total
+frames_processed
+frames_failed
+frames_with_missing_track_ids
+```
 
 ## 7. YOLO-to-COCO Conversion
 
@@ -487,6 +626,14 @@ overlap_ratio
 maxDets
 execution_timestamp
 metrics_output_path
+world_file_units
+raster_crs
+geotiff_output_path
+video_tracking_config
+tracker_version
+frames_processed
+frames_failed
+srt_output_path
 ```
 
 Recommended artifact:
@@ -508,6 +655,64 @@ The methodology has several important limitations:
 - Geospatial outputs depend on metadata availability.
 - Runtime can become high for large image sets.
 - COCO metrics should be interpreted with domain-specific context.
+
+---
+
+## 16. Implementation-Level Methodology Notes
+
+### Multi-GPU Training and Metric Availability
+
+The training methodology must account for the fact that metrics may not always be returned directly by the training call, especially under multi-GPU execution paths such as DataParallel or DDP. The methodological source of metrics should therefore be explicit:
+
+```text
+source = training_returned_metrics | post_training_validation_metrics | results_csv_metrics
+```
+
+### Post-Training Validation Fallback
+
+When `model.train()` does not return complete metrics, the pipeline should validate the generated `best.pt` checkpoint and persist the recovered metrics in the run summary. This fallback is not merely error handling; it is part of the reproducible experiment methodology.
+
+### Seed Generation and Persistence
+
+If seeds are generated dynamically from a base seed, run index, distributed rank, timestamp, or random component, the resolved seed must be stored. A seed-generation strategy improves experimental diversity, but reproducibility depends on persisting the final resolved seed for every run.
+
+### Resolution and Scale Consistency
+
+Training image size, validation image size, inference `img_size`, and SAHI `slice_size` should be recorded together. Evaluating or inferring at a resolution different from the training setup can change object scale distribution, small-object recall, false positives, memory consumption, and runtime.
+
+### `max_det` vs COCO `maxDets`
+
+The methodology should distinguish between:
+
+```text
+max_det   = YOLO inference/validation limit for detections per image
+maxDets   = COCO evaluation setting used by pycocotools
+```
+
+They influence different stages and should both be persisted when used.
+
+### DDP, Memory, and Runtime Methodology
+
+Distributed Data Parallel launches training subprocesses through PyTorch, but this is not equivalent to persistent asynchronous processing.
+
+Large model and image configurations should document:
+
+```text
+multi_gpu_mode
+device_list
+batch_size
+img_size
+model_family
+CUDA allocator configuration
+memory cleanup strategy
+```
+
+When used, memory stabilization practices such as `torch.cuda.empty_cache()`, `gc.collect()`, and `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` should be recorded in experiment notes.
+
+### Video Methodology
+
+If video inference is enabled, the methodology should document whether the pipeline produces processed video, frame-level metadata, and `.srt` subtitle files. These outputs are different from image-level batch inference and require temporal traceability.
+
 
 ---
 

@@ -27,6 +27,8 @@ YOLO / SAHI Inference and Geospatial Export Pipeline
         └── Batch Summaries
 ```
 
+> SAHI is used to enable efficient inference on high-resolution imagery with dense object distributions, improving detection performance without exceeding GPU memory constraints.
+
 ---
 
 ## 🛠️ Component Classification
@@ -107,6 +109,9 @@ QGIS-compatible CSV summary
 batch summary JSON
 batch summary CSV
 optional object crops
+georeferenced styled rasters
+JGW world files
+optional GeoTIFF outputs
 ```
 
 Example output layout:
@@ -358,6 +363,87 @@ Batch summaries may include:
 
 ---
 
+### Step 10B: Video Inference Outputs
+
+When video inference is enabled, the pipeline may generate:
+
+```text
+processed video files
+frame-level detection metadata
+.srt subtitle files
+```
+
+The `.srt` output can preserve temporal detection summaries or frame-level annotations for review. These outputs should include model, run, and timestamp lineage because they are not equivalent to static image predictions.
+
+### Step 10D: Dedicated Video Tracking Path
+
+Video inference is handled through a dedicated temporal processing path rather than as a simple static-image extension.
+
+Recommended detailed document:
+
+```text
+docs/yolo-video-inference-object-tracking-processor.md
+```
+
+The video path uses:
+
+```text
+OpenCV VideoCapture
+Ultralytics model.track()
+tracking IDs from box.id
+ObjectCounter
+OpenCV VideoWriter
+optional SRT frame summaries
+```
+
+Important distinction:
+
+```text
+Frame-level detections are not the same as unique tracked-object counts.
+```
+
+Unique counts depend on tracker ID stability. Missing or unstable `box.id` values should be recorded in the output summary.
+
+Recommended video outputs:
+
+```text
+annotated_video.mp4
+tracking_summary.json
+frame_level_detections.srt
+processing_log.json
+```
+
+### Step 10C: Raster Georeferencing and QGIS Automation
+
+When styled JPEG outputs need to be loaded as georeferenced rasters in QGIS, the pipeline can generate a raster georeferencing artifact pair:
+
+```text
+image-styled.jpg
+image-styled.jgw
+```
+
+This workflow includes:
+
+1. Copy full EXIF/XMP metadata from the original image to the styled JPEG.
+2. Generate a `.jgw` world file with six affine transform parameters.
+3. Use pixel scale derived from altitude/FOV when available, or a documented fallback.
+4. Use `GPSImgDirection` for rotation only when present and trusted.
+5. Persist CRS assumptions because `.jgw` files do not store CRS.
+6. Optionally convert the styled JPEG to GeoTIFF using GDAL.
+7. Use PyQGIS to batch-load `.jpg` files while QGIS applies the `.jgw` implicitly.
+
+Important caution:
+
+```text
+EXIF GPS metadata alone is not reliable raster georeferencing for QGIS. Styled JPEGs require a world file or GeoTIFF to be positioned as raster layers.
+```
+
+Recommended detailed document:
+
+```text
+docs/raster-georeferencing-qgis-automation-pipeline.md
+```
+
 ## 🧩 Participating Components
 
 ```text
@@ -365,6 +451,10 @@ CLI Orchestrator
 Model Selection Utility
 YOLO Inference Service
 SAHI Inference Service
+Video Tracking Processor
+Object Counter
+Frame Annotation Renderer
+SRT Artifact Generator
 Visualization Utilities
 Geospatial Processing Layer
 Filesystem Artifact Store
@@ -398,6 +488,9 @@ Core dependencies:
 - Pandas
 - PyProj / UTM
 - JSON / CSV
+- ExifTool CLI
+- GDAL / OGR
+- PyQGIS / QGIS runtime
 - local filesystem
 
 External consumers / supporting tools:
@@ -470,6 +563,83 @@ Mitigation:
 - write run manifests
 - make output overwrite behavior explicit
 
+### Video Tracking ID Instability
+
+Video unique-object counts depend on stable YOLO tracking IDs.
+
+Risk:
+
+- `box.id` may be missing in some frames.
+- Track IDs may switch after occlusion.
+- The same object may receive multiple IDs.
+- Unique counts may be inflated or undercounted.
+
+Mitigation:
+
+- separate frame-level detections from unique tracked-object counts
+- record frames with missing IDs
+- validate tracker behavior on sampled clips
+- persist tracker configuration and Ultralytics version
+
+### Video Rendering and Color-Space Risk
+
+The video processor uses custom OpenCV rendering to preserve configured class colors and avoid visual degradation.
+
+Risk:
+
+- OpenCV uses BGR frames while PIL commonly uses RGB.
+- Incorrect conversion can alter video colors.
+- Native YOLO plotting may not support the required custom overlays.
+
+Mitigation:
+
+- define an explicit BGR/RGB contract
+- render overlays manually when necessary
+- validate sample frames visually
+
+### Partial Video Artifact Risk
+
+Long videos can fail after partially writing outputs.
+
+Mitigation:
+
+- write MP4, JSON, and SRT to temporary paths
+- promote outputs only after successful completion
+- persist job status as `complete`, `partial_failed`, or `failed`
+
+### Raster Georeferencing Assumptions
+
+Styled JPEG rasters can be georeferenced through `.jgw` world files, but world files do not encode CRS.
+
+Mitigation:
+
+- persist CRS metadata in sidecar JSON
+- record whether world-file units are degrees or meters
+- prefer GeoTIFF when CRS ambiguity is unacceptable
+- validate raster placement in QGIS
+
+### External GIS Tool Dependency
+
+EXIF/XMP copying, GeoTIFF fallback, and QGIS automation depend on external tools such as ExifTool, GDAL/OGR, and PyQGIS.
+
+Mitigation:
+
+- validate binaries and Python bindings before batch execution
+- document installation requirements
+- isolate subprocess failures from core inference outputs
+- persist failed post-processing stages in a manifest
+
+### Project Name and Output Path Sanitization
+
+Because output folders are generated from project names, dataset names, image size, model family, timestamps, and run identifiers, names should be sanitized before filesystem use.
+
+Mitigation:
+
+- store raw project name and sanitized project name
+- avoid invalid path characters
+- use stable `run_id`
+- persist actual output directory
+
 ### No Formal Retry Logic
 
 Failed images are logged or skipped, but no formal retry queue exists.
@@ -479,6 +649,50 @@ Mitigation:
 - persist failed image lists
 - support reprocessing failed inputs
 - add retry only for non-deterministic I/O failures
+
+---
+
+## 🧠 Additional Engineering Notes
+
+### Resolution and Slice-Size Compatibility
+
+The pipeline should record both training and inference scale parameters:
+
+```text
+train_img_size
+inference_img_size
+sahi_slice_size
+overlap_ratio
+```
+
+This matters because a model trained at one resolution may behave differently when direct inference or SAHI inference changes the effective object scale.
+
+### Raw Prediction Persistence Before Geospatial Enrichment
+
+The pipeline should persist raw or normalized prediction artifacts before EXIF/GPS enrichment. This makes geospatial export re-runnable if metadata parsing, CRS assumptions, or shapefile generation must be corrected later.
+
+### Failed Image Manifest
+
+For batch inference, the system should persist a manifest such as:
+
+```json
+{
+  "run_id": "inference_001",
+  "failed_images": [
+    {
+      "image": "image_042.jpg",
+      "stage": "exif_parsing",
+      "error": "missing GPS metadata"
+    }
+  ]
+}
+```
+
+This is especially important because the current workflow has no formal retry queue.
+
+### Model Selection Context
+
+If the pipeline resolves `best.pt` automatically, it should persist why that checkpoint was selected, including the source metric, source run, and selection score.
 
 ---
 

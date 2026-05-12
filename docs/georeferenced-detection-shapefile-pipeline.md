@@ -60,6 +60,35 @@ Recommended upstream document:
 docs/yolo-sahi-inference-geospatial-export-pipeline.md
 ```
 
+## 🗺️ Relationship to Raster Georeferencing
+
+This shapefile-focused pipeline produces vector spatial features from detections.
+
+A complementary raster workflow can also georeference the styled detection image itself:
+
+```text
+styled image + EXIF/XMP copy + .jgw world file
+```
+
+or:
+
+```text
+styled image converted to GeoTIFF
+```
+
+The two workflows serve different GIS needs:
+
+| Workflow | Output Type | Purpose |
+|---|---|---|
+| Shapefile / GeoJSON export | Vector features | Analyze detections as points, polygons, attributes |
+| Raster georeferencing | Raster image layer | Visually overlay annotated detection imagery in QGIS |
+
+Recommended complementary document:
+
+```text
+docs/raster-georeferencing-qgis-automation-pipeline.md
+```
+
 ---
 
 ## 🌟 Why This Pipeline Matters
@@ -852,6 +881,29 @@ Because shapefile field names are constrained, production exports may need short
 | `class_name` | `cls_name` |
 | `coordinate_reference_system` | `crs` |
 | `source_image_id` | `img_id` |
+
+---
+
+## 🧠 Additional Lineage Requirements
+
+Shapefile outputs should preserve enough lineage to connect each spatial feature back to its source inference run.
+
+Recommended attributes or companion metadata:
+
+```text
+run_id
+image_id
+model_checkpoint
+inference_mode
+confidence_threshold
+sahi_slice_size
+source_prediction_file
+coordinate_source
+crs
+spatial_export_status
+```
+
+This is important because shapefile field names are constrained and may require shortened names. If the shapefile schema cannot store full lineage, a companion `metadata.json` should preserve complete traceability.
 
 ---
 

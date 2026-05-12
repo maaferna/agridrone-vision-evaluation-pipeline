@@ -188,6 +188,39 @@ training logs
 ClearML task records
 ```
 
+### 2B. Augmentation and Baseline Control
+
+The training pipeline can distinguish between reproducible baseline runs and exploratory augmented runs.
+
+Recommended policy:
+
+```text
+run_1      → baseline run, augmentations disabled or minimized
+run_2+     → dynamic augmentation policy enabled when configured
+```
+
+This distinction matters because baseline and augmented runs should not be compared as identical experimental conditions.
+
+The effective augmentation configuration should be persisted for every run, including:
+
+```text
+augment flag
+mosaic
+mixup
+HSV settings
+translate
+scale
+perspective
+flip settings
+Albumentations transforms when used
+```
+
+Technical caution:
+
+```text
+A high-level `augment=False` flag may not fully describe all internal Ultralytics augmentation behavior. Persist the effective training parameters rather than relying only on a conceptual label such as "no augmentation".
+```
+
 ### 3. Validation Service
 
 Representative file:
@@ -356,6 +389,30 @@ Responsibilities:
 - process DEM or terrain elevation where available
 - generate GeoJSON, CSV, shapefile, and JGW artifacts
 
+### 8B. Raster Georeferencing & QGIS Automation
+
+Recommended detailed document:
+
+```text
+docs/raster-georeferencing-qgis-automation-pipeline.md
+```
+
+This subcomponent extends inference outputs by making styled detection images usable as georeferenced rasters in QGIS.
+
+Responsibilities:
+
+- copy EXIF/XMP metadata from original images to styled outputs
+- generate `.jgw` world files for styled JPEGs
+- optionally convert styled rasters to GeoTIFF using GDAL
+- support PyQGIS batch loading
+- persist CRS and world-file assumptions in metadata
+
+Technical caution:
+
+```text
+EXIF GPS metadata alone is not enough for QGIS raster placement. Styled JPEGs require `.jgw` sidecar files or GeoTIFF conversion.
+```
+
 ### 9. Utility Layer
 
 Representative files:
@@ -518,10 +575,41 @@ GeoJSON
 Shapefile
 QGIS_summary.csv
 JGW files
+annotated videos
+tracking_summary.json
+SRT frame summaries
 object-crops/
 ```
 
 ### Step 4D: SAHI Inference Mode
+
+### 4E: Video Tracking Mode
+
+Recommended detailed document:
+
+```text
+docs/yolo-video-inference-object-tracking-processor.md
+```
+
+In video mode:
+
+1. `predict_yolo.py` opens the input video using OpenCV.
+2. Frames are processed sequentially.
+3. YOLO `model.track()` is executed with persistent tracking when configured.
+4. Detections are parsed from `result.boxes`.
+5. Tracking IDs are extracted from `box.id`.
+6. `ObjectCounter` accumulates unique object IDs by class.
+7. Custom OpenCV overlays are rendered on each frame.
+8. The annotated video is written to disk.
+9. A final JSON summary and optional `.srt` frame-level artifact are exported.
+
+Technical concerns:
+
+- unique counts depend on tracker ID stability
+- `box.id` may be unavailable for some detections
+- video rendering and encoding can become bottlenecks
+- RGB/BGR conversion must be controlled to preserve visual fidelity
+- partial MP4/JSON/SRT outputs should be handled with temporary paths and final promotion
 
 In SAHI mode:
 
@@ -583,6 +671,161 @@ Tracked information may include task name, dataset/project name, training config
 ClearML improves traceability, but the pipeline should still preserve local run manifests for portability.
 
 ---
+
+## 🧠 Implementation-Specific Behavior
+
+### Multi-GPU Training Modes
+
+The training layer may run in one of several execution modes:
+
+```text
+single GPU
+PyTorch DataParallel
+Distributed Data Parallel
+```
+
+This affects output paths, metric collection, CUDA memory pressure, and reproducibility. The run summary should record the selected execution mode and device identifiers.
+
+### DDP Subprocesses and Execution Semantics
+
+Distributed Data Parallel execution may launch subprocesses through `torch.distributed.run`.
+
+This should be documented as:
+
+```text
+distributed training execution
+```
+
+not as:
+
+```text
+persistent background processing or task-queue architecture
+```
+
+The overall system remains CLI/script-driven and synchronous unless a formal job queue, worker layer, or scheduler is added.
+
+### CUDA Memory Stabilization
+
+Large YOLOv11 variants, 2048px/4K imagery, high batch sizes, and DDP can create CUDA OOM or memory fragmentation.
+
+Runtime stabilization practices may include:
+
+```text
+torch.cuda.empty_cache()
+gc.collect()
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+```
+
+These settings should be recorded when used because they affect reproducibility, diagnostics, and deployment planning.
+
+### YOLOv8 vs YOLOv11 Runtime Trade-off
+
+YOLOv11 variants may consume substantially more VRAM than YOLOv8 under comparable image size and batch configurations. Model family selection should therefore be treated as both an accuracy decision and an infrastructure decision.
+
+### Batch Size Sensitivity
+
+Very small batch sizes, especially batch size 1, may produce unstable or artificially optimistic metrics in some configurations. Batch size must be recorded and considered when comparing experiments.
+
+
+### Training Metrics Fallback
+
+In some execution paths, especially with multi-GPU training, `model.train()` may not return a complete metrics object. The orchestrator should handle this as a formal branch:
+
+```text
+train_yolo()
+   ├── metrics available → persist metrics
+   └── metrics missing / None → load run best.pt → execute validation → persist recovered metrics
+```
+
+The resulting summary should include:
+
+```text
+metric_source
+post_training_validation_used
+validated_checkpoint_path
+```
+
+### Checkpoint Lineage Protection
+
+Before validation or inference, the system should verify that the selected `best.pt` belongs to the intended run and configuration.
+
+Recommended lineage fields:
+
+```text
+run_id
+training_run_id
+model_path
+checkpoint_hash_or_size
+source_results_csv
+args_yaml_path
+selected_metric_row
+model_family
+img_size
+batch_size
+seed
+```
+
+### Model Weight Resolution Strategy
+
+If weights are missing locally, the system may need to resolve or download model weights into the local model directory. This should be treated as a formal step and logged. Base model weights and trained checkpoints must not be confused.
+
+Recommended fields:
+
+```text
+requested_model
+resolved_model_path
+weight_source
+was_downloaded
+is_base_model_or_trained_checkpoint
+checksum_or_file_size
+```
+
+### Seed Generation Strategy
+
+If seeds are dynamically generated from base seed, run index, distributed rank, timestamp, or random component, both the input components and the final resolved seed should be persisted.
+
+### Research Mode vs Production-Oriented Mode
+
+This orchestrator currently mixes research-oriented execution and production-oriented concerns. The distinction should be explicit:
+
+| Mode | Characteristics |
+|---|---|
+| Research / experimentation | Interactive prompts, multiple runs, exploratory configuration, local artifacts |
+| Production-oriented batch execution | Non-interactive config, stable run IDs, retry manifests, structured logs, fixed model registry |
+
+### Champion Model Strategy
+
+For future production-oriented use, model selection should avoid relying on a single global `best.pt`. A champion model should be selected per configuration scope, such as dataset version, image size, inference mode, model family, and operational objective.
+
+---
+
+### Ultralytics Output Folder Collision Risk
+
+Ultralytics can auto-increment output directories when a target path already exists, producing folders such as:
+
+```text
+results
+results2
+results3
+```
+
+Downstream model selection, validation, and reporting should resolve the actual output path from persisted run metadata rather than assuming a fixed folder name.
+
+### Project and Dataset Name Sanitization
+
+Project names and dataset names are used as filesystem path components. They should be sanitized before output folder creation to avoid invalid characters, path traversal issues, and inconsistent artifact discovery.
+
+### Video Output Artifacts
+
+When video inference is enabled, the inference pipeline may generate:
+
+```text
+processed video output
+frame-level detection metadata
+.srt subtitle files
+```
+
+These outputs should be documented as optional inference artifacts and should include run and model lineage.
 
 ## 📂 Recommended Repository Placement
 

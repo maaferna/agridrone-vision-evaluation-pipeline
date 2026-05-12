@@ -1,8 +1,8 @@
 # Precision Agriculture Object Detection Pipeline
 
-> **Research-grade computer vision pipeline for object detection, geospatial processing, and COCO-based model evaluation on high-resolution agricultural drone imagery.**
 
----
+
+> **Production-oriented computer vision pipeline with integrated evaluation and research capabilities for object detection, geospatial processing, and COCO-based model evaluation on high-resolution agricultural drone imagery.**
 
 
 ### Core Runtime Stack
@@ -13,7 +13,10 @@
 | **Object Detection** | ![Ultralytics YOLO](https://img.shields.io/badge/Ultralytics%20YOLO-Object%20Detection-yellow) |
 | **Sliced Inference** | ![SAHI](https://img.shields.io/badge/SAHI-Sliced%20Inference-green) |
 | **Deep Learning Runtime** | ![PyTorch](https://img.shields.io/badge/PyTorch-Deep%20Learning-red) |
+| **Augmentation / Training Variability** | Albumentations, Ultralytics augmentation parameters |
+| **Distributed Training Runtime** | PyTorch DataParallel, DistributedDataParallel, `torch.distributed.run` |
 | **Image Processing** | ![OpenCV](https://img.shields.io/badge/OpenCV-Image%20Processing-blueviolet) ![Pillow](https://img.shields.io/badge/Pillow-Image%20IO-lightblue) |
+| **Video Tracking** | OpenCV VideoCapture/VideoWriter, Ultralytics `model.track()`, tracking IDs, optional SRT outputs |
 | **Evaluation** | ![pycocotools](https://img.shields.io/badge/pycocotools-COCO%20Metrics-orange) |
 | **Numerical Processing** | ![NumPy](https://img.shields.io/badge/NumPy-Array%20Computations-lightgrey) |
 | **Visualization** | ![Matplotlib](https://img.shields.io/badge/Matplotlib-Metrics%20Plots-blue) |
@@ -29,6 +32,7 @@
 | **Geospatial Data Processing** | ![Rasterio](https://img.shields.io/badge/Rasterio-Geospatial%20Data-brightgreen) |
 | **Spatial Output Formats** | ![GeoJSON](https://img.shields.io/badge/GeoJSON-Spatial%20Format-lightblue) ![Shapefile](https://img.shields.io/badge/Shapefile-GIS%20Vector%20Data-red) |
 | **GIS Compatibility** | QGIS-compatible CSV / GeoJSON / Shapefile outputs |
+| **Raster Georeferencing** | JPEG + JGW world files, optional GeoTIFF, GDAL/OGR, PyQGIS, ExifTool |
 
 ---
 
@@ -40,12 +44,20 @@ The pipeline was designed to support reproducible experimentation with object de
 
 The system enables direct comparison between standard YOLO inference and SAHI-based sliced inference, helping evaluate how different inference strategies affect detection quality, recall, precision, and model robustness in real-world drone image conditions.
 
+
+---
+> **Note:** While the system is designed with production-oriented architecture principles, its current implementation corresponds to an advanced research-grade pipeline rather than a fully productionized system. The evaluation setup also includes high-resolution (4K) imagery to expose performance differences that may not appear under standard validation conditions, particularly due to resolution scaling effects and shifts in object size distribution.
+
+
 ---
 
 ## 🖼️ Visual Overview
 
 ### Featured Poster: Pipeline Overview
 ![Pipeline Overview](assets/images/agridrone-vision-evaluation-pipeline1.png)
+
+
+> **Visual scope note:** The README should prioritize a small set of complementary diagrams: executive overview, system architecture, experiment orchestration, evaluation lifecycle, and GIS/shapefile generation. More detailed operational diagrams, such as the YOLO/SAHI inference-export flow, are referenced from their module-specific documents to avoid repeating the same `drone image → YOLO/SAHI → metadata → GIS` story at the same level.
 
 ### Additional Posters
 <div align="center">
@@ -119,6 +131,8 @@ This project addresses these challenges by building a reproducible evaluation pi
 
 ## 🎯 Main Objectives
 
+> The system is designed as a production-oriented pipeline with integrated evaluation and experimental capabilities, enabling both operational deployment and controlled performance analysis.
+
 ### Core Pipeline Objectives
 
 - Execute YOLO inference on high-resolution drone images.
@@ -151,10 +165,13 @@ The project includes specialized sub-pipelines. Some are part of the core runtim
 
 | Pipeline | Purpose | Documentation |
 |---|---|---|
+| **YOLO Training, Validation and Inference Orchestrator** | Coordinates YOLOv8/YOLOv11 training, validation, best-model selection, inference, SAHI, ClearML tracking, and artifact persistence. | `docs/yolo-cli-training-validation-inference-pipeline.md` |
 | **YOLO / SAHI Inference Pipeline** | Runs direct YOLO or SAHI sliced inference over images, directories, and video sources. | `docs/methodology.md` |
 | **YOLO / SAHI Inference and Geospatial Export Pipeline** | Executes direct YOLO or SAHI inference on agricultural drone imagery, generates styled detections, extracts EXIF/GPS metadata, converts GPS to UTM when available, and exports JSON, CSV, GeoJSON, QGIS-ready summaries, and batch outputs. | `docs/yolo-sahi-inference-geospatial-export-pipeline.md` |
+| **YOLO Video Inference & Object Tracking Processor** | Processes videos frame by frame with YOLO tracking, counts unique objects using tracking IDs, renders custom OpenCV overlays, and exports annotated video, JSON counts, and optional `.srt` frame summaries. | `docs/yolo-video-inference-object-tracking-processor.md` |
 | **COCO Evaluation Pipeline** | Converts YOLO predictions and ground truth into COCO format and evaluates AP50, AP50:95, Precision, Recall, and F1. | `docs/evaluation.md` |
 | **Georeferenced Detection & Shapefile Generation Pipeline** | Converts detections into GIS-ready GeoJSON, CSV, and shapefiles using GPS/EXIF metadata. | `docs/georeferenced-detection-shapefile-pipeline.md` |
+| **Raster Georeferencing & QGIS Automation Pipeline** | Preserves EXIF/XMP metadata, generates `.jgw` world files for styled JPEGs, supports optional GeoTIFF fallback, and automates QGIS raster loading with PyQGIS. | `docs/raster-georeferencing-qgis-automation-pipeline.md` |
 | **Validation Artifact Reporting Pipeline** | Links YOLO validation artifacts into Markdown reports and renders reproducible PDFs with Pandoc and LaTeX. | `docs/validation-artifact-reporting-pipeline.md` |
 | **Dataset Curation & Diagnostics Workflow** | Auxiliary workflow for dataset quality review using validation analysis, embeddings, FiftyOne, and error inspection when applicable. | `docs/methodology.md` |
 
@@ -185,6 +202,64 @@ It focuses on:
 This service is part of the core runtime workflow because it transforms images into operational detection artifacts and geospatial outputs that can later feed evaluation, GIS analysis, shapefile generation, and technical reporting.
 
 See: `docs/yolo-sahi-inference-geospatial-export-pipeline.md`
+
+---
+
+## 🎥 YOLO Video Inference & Object Tracking
+
+The project also includes a dedicated video inference path for temporal object detection and tracking.
+
+Unlike static image inference, video processing introduces state across frames. The processor can:
+
+- open videos with OpenCV
+- run Ultralytics `model.track()` frame by frame
+- extract bounding boxes, confidence values, class IDs, and tracking IDs
+- count unique objects by class using persistent `box.id` values
+- render custom OpenCV overlays with configured class colors
+- preserve original video colors by controlling RGB/BGR conversion
+- write annotated video outputs
+- export final JSON count summaries
+- optionally generate `.srt` frame-level detection summaries
+
+Important limitation:
+
+```text
+Unique object counts are only as reliable as tracker ID stability.
+```
+
+Recommended detailed document:
+
+```text
+docs/yolo-video-inference-object-tracking-processor.md
+```
+
+---
+
+## 🗺️ Raster Georeferencing & QGIS Automation
+
+The project also includes a raster-oriented post-processing workflow for styled detection images.
+
+This workflow addresses a practical GIS interoperability issue:
+
+```text
+EXIF GPS metadata copied into a JPEG is not sufficient for QGIS raster placement.
+```
+
+To make styled YOLO/SAHI output images load as georeferenced rasters, the pipeline can:
+
+- copy full EXIF/XMP metadata from the original image into the styled JPEG using ExifTool
+- generate a `.jgw` world file containing the six affine transform parameters
+- use altitude/FOV-derived scale or fallback spatial assumptions when needed
+- optionally use `GPSImgDirection` for rotation
+- preserve CRS assumptions in sidecar metadata
+- convert styled images to GeoTIFF with GDAL when JPEG + JGW is insufficient
+- batch-load `.jpg` rasters into QGIS with PyQGIS while letting QGIS apply `.jgw` files implicitly
+
+Recommended detailed document:
+
+```text
+docs/raster-georeferencing-qgis-automation-pipeline.md
+```
 
 ---
 
@@ -228,6 +303,43 @@ See: `docs/validation-artifact-reporting-pipeline.md`
 
 ---
 
+## 🧠 Implementation-Level Engineering Notes
+
+The project includes several implementation details that are important for correctly interpreting the system beyond the conceptual pipeline description.
+
+### Training and Multi-GPU Execution
+
+The training workflow may run under single-GPU execution, PyTorch DataParallel, or Distributed Data Parallel depending on the environment and selected configuration. Multi-GPU execution affects checkpoint paths, metric availability, CUDA memory pressure, and post-training validation behavior.
+
+### Metric Recovery After Training
+
+In some multi-GPU or Ultralytics execution paths, `model.train()` may not return complete metric objects. When that happens, the pipeline should recover metrics by validating the generated `best.pt` checkpoint after training and persisting those recovered metrics with the run metadata.
+
+### Checkpoint Lineage
+
+For multi-run experiments, the selected `best.pt` must be tied to the correct run, configuration, image size, seed, and `results.csv`. Validating a stale or incorrect checkpoint would invalidate model comparison results.
+
+### Reproducibility Metadata
+
+Each run should persist a resolved `run_id`, seed, model path, dataset YAML, image size, batch size, inference mode, `max_det`, SAHI parameters, and output paths. Dynamic timestamps are useful for folder organization, but a stable run identifier is required for reliable experiment traceability.
+
+### Local-First Tracking Policy
+
+ClearML is treated as an external tracking sink. Local JSON/CSV summaries and filesystem artifacts should remain authoritative so that validation, inference, and reporting can complete even if remote tracking fails.
+
+### Additional Runtime and Experiment-Control Notes
+
+The implementation contains several engineering controls that are important for interpreting experiment results:
+
+- The first training run may be treated as a reproducible baseline with augmentations disabled, while later runs can enable dynamic augmentation policies.
+- Augmentation behavior should be recorded explicitly because Ultralytics internal defaults may not always match a high-level `augment=False` assumption.
+- Multi-GPU execution can use single GPU, DataParallel, or DDP. DDP starts subprocesses through PyTorch distributed execution, but this does not mean the overall system is a persistent asynchronous job platform.
+- Large configurations such as YOLOv11 / YOLO11x with 2048px imagery can require CUDA memory-stabilization practices such as cache cleanup, garbage collection, or PyTorch allocator configuration.
+- Video inference may generate processed videos and `.srt` subtitle outputs when frame-level detection summaries are enabled.
+- Project names and dataset names should be sanitized before being used as filesystem paths.
+
+
+---
 ## 🏗️ System Architecture
 
 ### Diagram 1: High-Level Architecture
@@ -327,6 +439,7 @@ docs/
 ├── evaluation.md
 ├── geospatial-processing.md
 ├── georeferenced-detection-shapefile-pipeline.md
+├── raster-georeferencing-qgis-automation-pipeline.md
 ├── yolo-cli-training-validation-inference-pipeline.md
 ├── yolo-dataset-validation-benchmarking-service.md
 ├── yolo-sahi-inference-geospatial-export-pipeline.md
@@ -344,8 +457,9 @@ Recommended reading order:
 6. `evaluation.md`
 7. `geospatial-processing.md`
 8. `georeferenced-detection-shapefile-pipeline.md`
-9. `validation-artifact-reporting-pipeline.md`
-10. `limitations.md`
+9. `raster-georeferencing-qgis-automation-pipeline.md`
+10. `validation-artifact-reporting-pipeline.md`
+11. `limitations.md`
 
 ---
 
