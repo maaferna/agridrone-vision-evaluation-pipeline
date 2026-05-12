@@ -69,6 +69,9 @@ The processor is responsible for:
 - exporting final count summaries as JSON
 - optionally exporting `.srt` frame-level detection summaries
 - logging progress and frame-level errors
+- defensively extracting bounding boxes through `safe_extract_bbox_info_video`
+- persisting results through `save_video_processing_results`
+- rendering adaptive overlays through `draw_styled_boxes_and_summary_video`
 
 ---
 
@@ -366,6 +369,49 @@ A final JSON summary should include:
 
 ---
 
+## 🧩 Function-Level Component Contract
+
+The video processor should be documented as a chain of video-specific functions, not as a generic image inference loop.
+
+Recommended function-level contract:
+
+```text
+run_inference_video
+    → model loading
+    → OpenCV VideoCapture initialization
+    → frame loop orchestration
+    → VideoWriter lifecycle
+
+safe_extract_bbox_info_video
+    → defensive parsing of Ultralytics box objects
+    → xyxy / xywh extraction
+    → confidence, class ID, and track ID extraction
+    → invalid detection filtering
+
+ObjectCounter
+    → unique tracking ID aggregation
+    → per-class unique counts
+    → frame-level vs global count separation
+
+draw_styled_boxes_and_summary_video
+    → OpenCV-based custom rendering
+    → dynamic font and border scaling
+    → class color application
+    → fallback colors and fonts
+
+save_video_processing_results
+    → JSON-safe serialization
+    → output paths and processing metrics
+    → final object counts
+    → errors and frame-processing summary
+```
+
+Why this matters:
+
+```text
+The video path has different behavior from static image inference. It includes temporal state, rendering contracts, OpenCV resource management, and defensive parsing of Ultralytics tracking results.
+```
+
 ## 🧠 Tracking Correctness
 
 The most important correctness constraint is:
@@ -394,6 +440,40 @@ average_track_duration
 ```
 
 ---
+
+## 🧱 Defensive Bounding Box Extraction
+
+The video pipeline should not assume that every Ultralytics tracking result exposes the same coordinate representation.
+
+Known implementation risk:
+
+```text
+Box object has neither 'xyxy' nor 'xywh'
+```
+
+Recommended extraction strategy:
+
+```text
+1. Prefer box.xyxy when available.
+2. Fallback to box.xywh when available.
+3. Convert coordinates to a normalized internal representation.
+4. Validate that coordinates are numeric.
+5. Validate that the box is within frame bounds.
+6. Skip invalid detections and record the reason.
+```
+
+Recommended fields in the output summary:
+
+```text
+bbox_format_used
+bbox_extraction_status
+bbox_extraction_error
+detections_skipped_invalid_bbox
+detections_missing_xyxy
+detections_missing_xywh
+```
+
+This protects the pipeline from silent API changes or result-shape inconsistencies in Ultralytics.
 
 ## 📊 Performance Measurement Strategy
 
@@ -425,6 +505,87 @@ Why this matters:
 
 ---
 
+## 🖥️ Dynamic Rendering Scale
+
+The renderer should adapt visual parameters to video resolution.
+
+Recommended scaling variables:
+
+```text
+frame_width
+frame_height
+font_scale
+box_thickness
+label_padding
+summary_panel_scale
+```
+
+Why this matters:
+
+- High-resolution videos need larger fonts and thicker borders for readability.
+- Low-resolution videos can be obscured by oversized labels.
+- Consistent scaling improves visual inspection and stakeholder review.
+
+Recommended policy:
+
+```text
+render_scale = function(frame_width, frame_height)
+```
+
+The selected render scale should be recorded when visual reproducibility matters.
+
+## 🏷️ Label, Color, and Font Normalization
+
+### Label Dictionary Normalization
+
+JSON object keys are loaded as strings, while YOLO class IDs are numeric.
+
+Risk:
+
+```text
+labels_dict = {"0": "class_name"}
+YOLO class id = 0
+```
+
+Without normalization, this can produce errors such as:
+
+```text
+Label index not found
+```
+
+Recommended normalization:
+
+```python
+labels_dict = {int(k): v for k, v in labels_dict.items()}
+```
+
+The same principle should be applied to color configuration when colors are keyed by class ID.
+
+### Fallback Color Policy
+
+If a configured color is missing for a detected class, the renderer should:
+
+```text
+1. use a fallback color
+2. log a warning
+3. preserve the class ID and class name in JSON output
+```
+
+This prevents the renderer from failing while still exposing configuration drift.
+
+### Fallback Font Policy
+
+If the configured or system font is unavailable, the renderer should fall back to a default OpenCV/PIL font and log a warning.
+
+This matters for portability across:
+
+```text
+Linux desktops
+headless servers
+Docker containers
+Conda environments
+```
+
 ## 🚨 Error Handling and Failure Policy
 
 The processor should isolate errors at frame level where possible.
@@ -452,6 +613,35 @@ partial_output_status
 This distinction is important because a few corrupted frames may be tolerable, while many failures may indicate a broken video or decoding problem.
 
 ---
+
+## 🧾 JSON Serialization Contract
+
+Video processing outputs often contain values from NumPy, OpenCV, or PyTorch.
+
+These values may not be directly serializable by standard `json.dump`.
+
+Recommended conversion policy:
+
+```text
+np.int64      → int
+np.float32    → float
+np.ndarray    → list
+torch.Tensor  → list or scalar
+Path          → str
+set           → list
+```
+
+Recommended implementation behavior:
+
+```text
+Before persisting JSON, convert all metrics, counts, bounding boxes, IDs, and paths into JSON-safe Python types.
+```
+
+Why this matters:
+
+```text
+A successful video processing run can still fail at the persistence stage if NumPy or tensor values are not converted.
+```
 
 ## 🧾 Artifact Consistency Policy
 
@@ -484,6 +674,63 @@ validated
 
 ---
 
+## 🎞️ Video Resource Finalization
+
+OpenCV video resources must be released explicitly.
+
+Recommended lifecycle:
+
+```python
+try:
+    # open VideoCapture
+    # open VideoWriter
+    # process frames
+finally:
+    cap.release()
+    writer.release()
+    cv2.destroyAllWindows()
+```
+
+Why this matters:
+
+- `VideoWriter.release()` finalizes the encoded video file.
+- Missing release calls can produce corrupted or unreadable MP4 outputs.
+- Resource leaks can affect subsequent video jobs in the same process.
+
+The final JSON summary should record whether resources were released successfully.
+
+## 🪵 Logging Policy for Long Videos
+
+Frame-level debug logging can become a performance bottleneck in long videos.
+
+Recommended policy:
+
+```text
+normal mode:
+    log startup, configuration, progress every N frames, summary, and errors
+
+debug mode:
+    allow frame-level and detection-level logs only when explicitly enabled
+
+production-like mode:
+    avoid per-box logging inside the frame loop
+```
+
+Recommended summary fields:
+
+```text
+log_level
+progress_log_interval_frames
+debug_logging_enabled
+total_errors_logged
+```
+
+Why this matters:
+
+```text
+A long video may contain thousands or millions of frames. Excessive logging can distort performance measurements and slow down processing.
+```
+
 ## 🧰 Dependencies
 
 Core dependencies:
@@ -492,10 +739,13 @@ Core dependencies:
 - OpenCV
 - Ultralytics YOLO
 - PyTorch / CUDA
+- cuDNN
 - NumPy
+- Pandas
 - JSON
 - `collections.defaultdict`
 - local filesystem
+- Logging
 
 Optional / related dependencies:
 
@@ -599,6 +849,52 @@ After processing:
 - unique counts are separated from frame-level detections
 
 ---
+
+## 🧭 Model Resolution and Project Selection
+
+The video pipeline depends on the same model-selection and configuration layer as image inference.
+
+Implementation concerns:
+
+- project selection may be driven by JSON configuration rather than free-text input
+- project names and dataset keys should be normalized before path construction
+- `get_best_model` must resolve the correct `best.pt` under the current training-result hierarchy
+- model selection should persist the source `results.csv`, selected metric, and resolved checkpoint path
+
+Recommended lineage fields:
+
+```text
+resolved_project_key
+raw_project_name
+sanitized_project_name
+model_search_root
+resolved_model_path
+source_results_csv
+selection_strategy
+selected_metric_score
+```
+
+Why this matters:
+
+```text
+Video inference results are only reproducible if the selected checkpoint can be traced back to the exact training run and configuration.
+```
+
+## 🧯 Known Implementation Failure Modes
+
+| Failure | Cause | Recommended Mitigation |
+|---|---|---|
+| `Label index not found` | JSON label keys are strings while YOLO class IDs are integers | Normalize `labels_dict` keys with `int(k)` |
+| Missing or wrong class colors | Color config keys do not match normalized class IDs | Normalize color keys and use fallback color |
+| `Box object has neither xyxy nor xywh` | Ultralytics box object does not expose expected coordinates | Use `safe_extract_bbox_info_video` and skip invalid detections |
+| Duplicate object counts | Counting frame-level detections instead of persistent IDs | Count unique `box.id` values |
+| Undercount / overcount | Tracker ID switches, missing IDs, or occlusion | Record missing IDs and validate sampled clips |
+| Video colors distorted | RGB/BGR conversion mismatch between OpenCV, PIL, and YOLO utilities | Enforce explicit color-space contract |
+| JSON save fails | NumPy scalar, array, set, tensor, or Path objects are not JSON-safe | Convert values before `json.dump` |
+| Output video corrupted | `VideoWriter` not released | Release video resources in `finally` block |
+| Long-video slowdown | Excessive debug logs or rendering overhead | Throttle logs and track per-stage timings |
+| Wrong model selected | Changed training-results hierarchy or ambiguous project selection | Persist model-selection lineage |
+| Partial outputs remain | Job fails after MP4/JSON/SRT partial write | Write to temporary paths and promote atomically |
 
 ## 📌 Portfolio Summary
 

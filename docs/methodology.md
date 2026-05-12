@@ -390,6 +390,38 @@ frames_failed
 frames_with_missing_track_ids
 ```
 
+### Video Implementation Methodology Details
+
+The video tracking branch should record implementation-level behavior, not only high-level inputs and outputs.
+
+Recommended methodological fields:
+
+```text
+bbox_extraction_strategy
+detections_skipped_invalid_bbox
+labels_normalized
+colors_normalized
+fallback_color_used
+fallback_font_used
+font_scale
+box_thickness
+json_serialization_strategy
+video_resources_released
+progress_log_interval_frames
+debug_logging_enabled
+resolved_model_path
+source_results_csv
+```
+
+Important implementation cautions:
+
+```text
+JSON-loaded class dictionaries may use string keys, while YOLO class IDs are numeric.
+Ultralytics tracking boxes may expose xyxy or xywh depending on result shape.
+OpenCV video writing requires explicit resource release.
+NumPy and tensor values must be converted before JSON persistence.
+```
+
 ## 7. YOLO-to-COCO Conversion
 
 To perform standardized evaluation, YOLO annotations and predictions are converted to COCO format.
@@ -634,6 +666,11 @@ tracker_version
 frames_processed
 frames_failed
 srt_output_path
+bbox_extraction_strategy
+labels_normalized
+colors_normalized
+json_serialization_strategy
+video_resources_released
 ```
 
 Recommended artifact:

@@ -611,6 +611,49 @@ Technical concerns:
 - RGB/BGR conversion must be controlled to preserve visual fidelity
 - partial MP4/JSON/SRT outputs should be handled with temporary paths and final promotion
 
+#### Video Mode Implementation Contracts
+
+The video mode should document lower-level contracts because it is more stateful than image inference.
+
+Recommended contracts:
+
+```text
+safe_extract_bbox_info_video
+    validate xyxy / xywh
+    extract confidence, class ID, and tracking ID
+    record invalid detections
+
+draw_styled_boxes_and_summary_video
+    normalize labels and colors
+    apply dynamic font and border scaling
+    use fallback colors and fonts
+    preserve BGR/RGB consistency
+
+save_video_processing_results
+    convert NumPy and tensor values to JSON-safe types
+    persist processing metrics
+    persist output paths and artifact status
+```
+
+Recommended validation before processing:
+
+```text
+labels_dict keys can be converted to int
+colors map covers configured classes or fallback color exists
+video codec is available
+VideoWriter can be opened
+output directory is writable
+resolved best.pt belongs to selected project/configuration
+```
+
+Recommended finalization:
+
+```text
+cap.release()
+writer.release()
+cv2.destroyAllWindows()
+```
+
 In SAHI mode:
 
 1. A high-resolution image is sliced.
@@ -826,6 +869,22 @@ frame-level detection metadata
 ```
 
 These outputs should be documented as optional inference artifacts and should include run and model lineage.
+
+### JSON-Driven Project Selection
+
+For video and inference workflows, project selection should preferably come from validated JSON configuration rather than free-text project names.
+
+Recommended behavior:
+
+```text
+load project configuration
+display available projects by index
+resolve selected project key
+sanitize project/dataset name for filesystem use
+persist raw and resolved project names
+```
+
+This reduces path bugs, spelling drift, and model-selection ambiguity.
 
 ## 📂 Recommended Repository Placement
 

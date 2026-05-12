@@ -413,6 +413,32 @@ frame_level_detections.srt
 processing_log.json
 ```
 
+### Step 10E: Video Implementation Contracts
+
+The dedicated video path should include defensive processing contracts:
+
+```text
+safe_extract_bbox_info_video
+    handles xyxy / xywh differences
+    records invalid or missing bounding boxes
+
+label/color normalization
+    converts JSON string keys to integer class IDs
+    applies fallback colors when required
+
+adaptive rendering
+    scales font size and line thickness by frame resolution
+    preserves BGR/RGB consistency
+
+JSON-safe persistence
+    converts NumPy/tensor/path/set values before writing JSON
+
+resource finalization
+    releases VideoCapture and VideoWriter explicitly
+```
+
+These contracts prevent common failures in long-running video inference jobs.
+
 ### Step 10C: Raster Georeferencing and QGIS Automation
 
 When styled JPEG outputs need to be loaded as georeferenced rasters in QGIS, the pipeline can generate a raster georeferencing artifact pair:

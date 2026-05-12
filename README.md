@@ -20,7 +20,7 @@
 | **Evaluation** | ![pycocotools](https://img.shields.io/badge/pycocotools-COCO%20Metrics-orange) |
 | **Numerical Processing** | ![NumPy](https://img.shields.io/badge/NumPy-Array%20Computations-lightgrey) |
 | **Visualization** | ![Matplotlib](https://img.shields.io/badge/Matplotlib-Metrics%20Plots-blue) |
-| **Runtime Acceleration** | ![CUDA](https://img.shields.io/badge/CUDA-GPU%20Acceleration-green) |
+| **Runtime Acceleration** | ![CUDA](https://img.shields.io/badge/CUDA-GPU%20Acceleration-green), cuDNN, NVIDIA GPU driver stack |
 | **Benchmarking Support** | PyYAML, Ultralytics `model.val()`, CUDA warm-up, ClearML logging |
 
 ### Geospatial Processing & GIS Outputs
@@ -225,6 +225,25 @@ Important limitation:
 
 ```text
 Unique object counts are only as reliable as tracker ID stability.
+```
+
+### Video Processor Implementation Contracts
+
+The video processor includes lower-level implementation contracts that are important for correctness:
+
+- `safe_extract_bbox_info_video` defensively handles `xyxy` / `xywh` differences in Ultralytics box objects.
+- `labels_dict` and color maps should normalize JSON string keys into integer class IDs.
+- the renderer dynamically scales font size and bounding-box thickness based on video resolution.
+- fallback colors and fonts prevent rendering failures in incomplete configurations or minimal environments.
+- JSON outputs should convert NumPy, tensor, set, and path values into JSON-safe Python types.
+- OpenCV `VideoCapture` and `VideoWriter` resources must be released explicitly to avoid corrupted video artifacts.
+- long videos should avoid excessive per-frame debug logging because logging can become a performance bottleneck.
+- the selected `best.pt` for video inference should persist model-selection lineage from `get_best_model`.
+
+These details are documented in:
+
+```text
+docs/yolo-video-inference-object-tracking-processor.md
 ```
 
 Recommended detailed document:

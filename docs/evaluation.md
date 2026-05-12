@@ -614,6 +614,33 @@ video tracking summary
 
 If video metrics are required, the project should define a separate evaluation protocol for tracking quality, ID switches, frame-level precision/recall, or object counting error.
 
+### Video Counting and Tracking Evaluation Caveat
+
+Video tracking summaries should not be interpreted as detection evaluation metrics unless a separate video ground truth and tracking evaluation protocol exists.
+
+Important distinction:
+
+```text
+unique object count
+    derived from YOLO tracking IDs across frames
+
+detection metric
+    derived from comparison against labeled ground truth
+```
+
+If the project evaluates video tracking quality, recommended metrics may include:
+
+```text
+ID switches
+missing track IDs
+track fragmentation
+counting error
+frame-level precision / recall
+SRT synchronization error
+```
+
+The current video JSON and SRT outputs are operational inference artifacts, not COCO evaluation artifacts.
+
 ## Recommended Future Improvements
 
 - Add experiment tracking with `run_id`.

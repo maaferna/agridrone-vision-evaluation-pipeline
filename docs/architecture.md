@@ -252,6 +252,12 @@ Technical concern:
 
 Video processing introduces temporal state. Unique object counts depend on the stability and availability of YOLO tracking IDs such as `box.id`.
 
+Implementation contract:
+
+```text
+run_inference_video → safe_extract_bbox_info_video → ObjectCounter → draw_styled_boxes_and_summary_video → save_video_processing_results
+```
+
 ---
 
 ### Object Counter
@@ -734,6 +740,58 @@ The system remains synchronous and frame-based unless a formal video job queue o
 ### Video Artifact Consistency
 
 Annotated videos, JSON summaries, and SRT outputs should be promoted to final paths only after the video job completes successfully. Long-running video jobs can otherwise leave partial but misleading artifacts.
+
+### Video Function-Level Boundary
+
+The video inference path should be treated as a sequence of explicit responsibilities:
+
+```text
+run_inference_video
+    ↓
+safe_extract_bbox_info_video
+    ↓
+ObjectCounter
+    ↓
+draw_styled_boxes_and_summary_video
+    ↓
+save_video_processing_results
+```
+
+Architectural implications:
+
+- bounding-box extraction should be isolated from rendering
+- object counting should be isolated from frame annotation
+- persistence should convert NumPy/tensor values into JSON-safe types
+- video resources should be finalized independently of inference success or failure
+- output promotion should happen only when MP4, JSON, and SRT artifacts are consistent
+
+### Video Configuration Normalization Layer
+
+The video path should normalize user/configuration inputs before execution:
+
+```text
+JSON label keys      → integer class IDs
+JSON color keys      → integer class IDs
+project names        → sanitized filesystem names
+model selection path → resolved checkpoint lineage
+font path            → configured font or fallback
+```
+
+This reduces failures caused by JSON key typing, path drift, missing colors, and environment-specific font availability.
+
+### GPU Runtime Assumption for Video
+
+Video inference should document the full GPU runtime assumption:
+
+```text
+NVIDIA driver
+CUDA
+cuDNN
+PyTorch build matching CUDA version
+Ultralytics runtime compatibility
+```
+
+CUDA alone is not a complete deployment contract for GPU-accelerated video inference.
 
 ### Multi-GPU Training Boundary
 

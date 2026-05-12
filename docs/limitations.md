@@ -558,6 +558,48 @@ World files contain transform coefficients but no coordinate reference system.
 - Store `crs`, `world_file_units`, `transform_origin`, and `rotation_source` in a sidecar manifest.
 - Generate GeoTIFF outputs when unambiguous embedded CRS is required.
 
+### Video Implementation Robustness Limitations
+
+The video processor has additional implementation-level risks beyond tracker instability.
+
+**Key risks:**
+
+- Ultralytics boxes may not always expose the expected `xyxy` or `xywh` structure.
+- JSON-loaded label dictionaries may use string keys while YOLO returns integer class IDs.
+- Missing class colors or missing fonts can break or degrade rendering.
+- NumPy, tensor, set, and `Path` objects can break JSON serialization.
+- `VideoWriter` output can become corrupted if resources are not released.
+- Excessive debug logging can slow long-video processing.
+- Model selection can become ambiguous if the training-results hierarchy changes.
+
+**Recommended mitigation:**
+
+- Use `safe_extract_bbox_info_video` for defensive bbox parsing.
+- Normalize label and color dictionaries before inference.
+- Define fallback colors and fallback fonts.
+- Convert outputs to JSON-safe Python types before persistence.
+- Release `VideoCapture` and `VideoWriter` in a `finally` block.
+- Throttle logs in normal execution mode.
+- Persist model-selection lineage in every video summary.
+
+---
+
+### Video Configuration Drift
+
+The video path depends on project configuration, class labels, colors, model paths, rendering options, and output directories.
+
+**Risk:**
+
+A small mismatch in JSON configuration can produce visually incorrect overlays, failed class lookup, wrong colors, or wrong checkpoint selection.
+
+**Recommended mitigation:**
+
+- validate project configuration before video processing
+- normalize JSON keys
+- persist raw and resolved configuration
+- fail fast on missing required classes
+- warn and fallback only for non-critical rendering settings
+
 ### Video Tracking and Object Counting Limitations
 
 Video inference depends on temporal tracking behavior.
@@ -760,6 +802,10 @@ The system would benefit from automated tests around critical transformations.
 - Video tracking ID stability validation
 - SRT synchronization validation
 - OpenCV color-space rendering validation
+- Defensive video bbox extraction validation
+- Label/color normalization validation
+- JSON-safe serialization validation
+- Video resource finalization validation
 - COCO evaluation artifact validation
 
 **Recommended mitigation:**
