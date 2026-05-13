@@ -1,5 +1,13 @@
 # 🧪 YOLO Dataset Validation and Benchmarking Service
 
+## 🔒 Public-Safe Documentation Notice
+
+This document is part of a generalized and anonymized portfolio version of an agricultural computer vision system.
+
+It does **not** include private datasets, client or institutional names, real field coordinates, proprietary model weights, production credentials, unpublished experimental results, internal reports, or operational deployment details.
+
+All project names, dataset names, paths, metric values, coordinates, and identifiers shown here are illustrative, anonymized, or generalized for technical documentation purposes.
+
 > **Purpose:** GPU-aware reproducible validation and benchmarking service for YOLO models on agricultural datasets, including repeated runs, split redirection, timing statistics, ClearML logging, and structured JSON summaries.
 
 ---
@@ -351,35 +359,6 @@ Technical concern:
 
 Cache cleanup does not guarantee full determinism. It should be treated as a memory hygiene step, not as a complete reproducibility mechanism.
 
-### Step 6B: Python Garbage Collection and Allocator Configuration
-
-For large models, large images, or repeated validation/training cycles, CUDA memory fragmentation can affect runtime stability.
-
-When used, the following should be recorded in the validation summary or run manifest:
-
-```text
-torch.cuda.empty_cache()
-gc.collect()
-PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-```
-
-These settings are operational controls. They do not guarantee determinism, but they can materially affect whether large experiments complete successfully.
-
----
-
-### Step 6C: DDP Subprocess Context
-
-If validation or post-training validation follows DDP-based training, the summary should record that the source training run used distributed execution.
-
-Recommended fields:
-
-```text
-source_training_multi_gpu_mode
-source_training_device_count
-source_training_distributed_rank_policy
-```
-
-
 ---
 
 ### Step 7: Execute YOLO Validation
@@ -441,10 +420,10 @@ Recommended output structure:
     {
       "class_id": 0,
       "class_name": "weed",
-      "precision": 0.84,
-      "recall": 0.78,
-      "map50": 0.82,
-      "map50_95": 0.51
+      "precision": "ILLUSTRATIVE_VALUE",
+      "recall": "ILLUSTRATIVE_VALUE",
+      "map50": "ILLUSTRATIVE_VALUE",
+      "map50_95": "ILLUSTRATIVE_VALUE"
     }
   ]
 }
@@ -518,10 +497,10 @@ The final structured output should include:
   "confidence_threshold": 0.25,
   "seed": 42,
   "metrics": {
-    "precision": 0.86,
-    "recall": 0.80,
-    "map50": 0.84,
-    "map50_95": 0.51
+    "precision": "ILLUSTRATIVE_VALUE",
+    "recall": "ILLUSTRATIVE_VALUE",
+    "map50": "ILLUSTRATIVE_VALUE",
+    "map50_95": "ILLUSTRATIVE_VALUE"
   },
   "timing": {
     "average_time_per_image": 0.043,
@@ -669,31 +648,6 @@ Mitigation:
 
 ---
 
-### Baseline vs Augmented Metrics
-
-Validation summaries should record whether the model being validated came from a baseline run or an augmented run.
-
-Risk:
-
-- A baseline run and an augmented run may not be comparable without acknowledging augmentation policy.
-- Reported metrics can be misleading if augmentation differences are hidden.
-
-Mitigation:
-
-- Persist `augmentation_policy`.
-- Persist effective augmentation parameters.
-- Include `metric_source` and `training_run_id`.
-
-### Ultralytics Output Directory Ambiguity
-
-Validation should not assume that the training output folder is always named `results`. Ultralytics may auto-increment output paths when collisions occur.
-
-Mitigation:
-
-- Read actual output paths from run metadata.
-- Persist `ultralytics_output_dir`.
-- Validate that `best.pt`, `args.yaml`, and `results.csv` belong to the same run.
-
 ### ClearML Failure Coupling
 
 If ClearML logging fails, core validation should still complete.
@@ -776,19 +730,19 @@ Before executing validation, check:
     "num_runs": 3
   },
   "metrics": {
-    "precision": 0.86,
-    "recall": 0.80,
-    "map50": 0.84,
-    "map50_95": 0.51
+    "precision": "ILLUSTRATIVE_VALUE",
+    "recall": "ILLUSTRATIVE_VALUE",
+    "map50": "ILLUSTRATIVE_VALUE",
+    "map50_95": "ILLUSTRATIVE_VALUE"
   },
   "class_metrics": [
     {
       "class_id": 0,
       "class_name": "weed",
-      "precision": 0.84,
-      "recall": 0.78,
-      "map50": 0.82,
-      "map50_95": 0.51
+      "precision": "ILLUSTRATIVE_VALUE",
+      "recall": "ILLUSTRATIVE_VALUE",
+      "map50": "ILLUSTRATIVE_VALUE",
+      "map50_95": "ILLUSTRATIVE_VALUE"
     }
   ],
   "timing": {

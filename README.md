@@ -1,6 +1,12 @@
 # Precision Agriculture Object Detection Pipeline
 
+## 🔒 Public-Safe Documentation Notice
 
+This document is part of a generalized and anonymized portfolio version of an agricultural computer vision system.
+
+It does **not** include private datasets, client or institutional names, real field coordinates, proprietary model weights, production credentials, unpublished experimental results, internal reports, or operational deployment details.
+
+All project names, dataset names, paths, metric values, coordinates, and identifiers shown here are illustrative, anonymized, or generalized for technical documentation purposes.
 
 > **Production-oriented computer vision pipeline with integrated evaluation and research capabilities for object detection, geospatial processing, and COCO-based model evaluation on high-resolution agricultural drone imagery.**
 
@@ -482,7 +488,27 @@ Recommended reading order:
 
 ---
 
+## ✅ Public Portfolio Sanitization
+
+This repository is intended to describe the system architecture and engineering methodology without exposing confidential material.
+
+Before publishing or sharing externally, verify that the repository does not include:
+
+- real drone imagery or styled outputs from private datasets
+- real GPS, UTM, shapefile, GeoJSON, JGW, or GeoTIFF outputs
+- trained model weights such as `best.pt` or `last.pt`
+- private dataset YAML files
+- internal ClearML, CVAT, Roboflow, or project workspace names
+- absolute local paths
+- client, institution, farm, field, producer, or researcher names
+- unpublished experiment results or exact internal metrics
+- production credentials, tokens, API keys, or infrastructure endpoints
+
+The Markdown files use generalized examples, anonymized placeholders, and illustrative paths only.
+
 ## 📚 Privacy & Confidentiality Notice
+
+All examples, paths, metrics, dataset names, and geospatial references are illustrative or anonymized. This public version should not be interpreted as a literal dump of any institutional or client-specific project documentation.
 
 This repository is intended to document the architecture, methodology, and technical approach of a computer vision system for agricultural drone imagery.
 

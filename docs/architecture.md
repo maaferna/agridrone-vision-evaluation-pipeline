@@ -1,5 +1,13 @@
 # 🏛️ Architecture
 
+## 🔒 Public-Safe Documentation Notice
+
+This document is part of a generalized and anonymized portfolio version of an agricultural computer vision system.
+
+It does **not** include private datasets, client or institutional names, real field coordinates, proprietary model weights, production credentials, unpublished experimental results, internal reports, or operational deployment details.
+
+All project names, dataset names, paths, metric values, coordinates, and identifiers shown here are illustrative, anonymized, or generalized for technical documentation purposes.
+
 ## 🌟 AgriDrone Vision Evaluation Pipeline
 
 The **AgriDrone Vision Evaluation Pipeline** is a modular computer vision and evaluation system designed for high-resolution agricultural drone imagery. The architecture combines object detection inference, sliced inference for large images, prediction normalization, geospatial metadata extraction, COCO-compatible evaluation, and automated reporting.
@@ -40,7 +48,7 @@ graph TD
 
 ### 1. Entry & Orchestration Layer
 
-The orchestration layer is responsible for coordinating the complete workflow. In the current implementation, this layer is represented by the main script and command-line execution flow.
+The orchestration layer is responsible for coordinating the complete workflow. In the generalized implementation pattern, this layer is represented by the main script and command-line execution flow.
 
 Typical responsibilities:
 
@@ -569,7 +577,7 @@ Reporting should preserve raw metrics and avoid hiding model weaknesses behind a
 
 ## 🗄️ Data Stores
 
-The current implementation uses local filesystem storage.
+The generalized implementation pattern uses local filesystem storage.
 
 Typical directories:
 

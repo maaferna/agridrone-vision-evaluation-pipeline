@@ -1,5 +1,13 @@
 # 🧪 Methodology
 
+## 🔒 Public-Safe Documentation Notice
+
+This document is part of a generalized and anonymized portfolio version of an agricultural computer vision system.
+
+It does **not** include private datasets, client or institutional names, real field coordinates, proprietary model weights, production credentials, unpublished experimental results, internal reports, or operational deployment details.
+
+All project names, dataset names, paths, metric values, coordinates, and identifiers shown here are illustrative, anonymized, or generalized for technical documentation purposes.
+
 ## 🌟 Overview
 
 This document describes the methodological workflow used by the **AgriDrone Vision Evaluation Pipeline** to process high-resolution agricultural drone imagery, execute object detection inference, generate normalized predictions, enrich results with geospatial metadata, and evaluate model performance using COCO metrics.

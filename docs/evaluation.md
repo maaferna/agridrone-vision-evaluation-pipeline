@@ -1,5 +1,13 @@
 # 📊 Evaluation
 
+## 🔒 Public-Safe Documentation Notice
+
+This document is part of a generalized and anonymized portfolio version of an agricultural computer vision system.
+
+It does **not** include private datasets, client or institutional names, real field coordinates, proprietary model weights, production credentials, unpublished experimental results, internal reports, or operational deployment details.
+
+All project names, dataset names, paths, metric values, coordinates, and identifiers shown here are illustrative, anonymized, or generalized for technical documentation purposes.
+
 ## 🌟 Overview
 
 This document describes the evaluation strategy used in the **AgriDrone Vision Evaluation Pipeline**. The system evaluates object detection models on high-resolution drone imagery using standardized COCO metrics through `pycocotools`.
@@ -336,6 +344,8 @@ outputs/
 
 ## Recommended Metrics JSON Structure
 
+> **Public example note:** The metric values in JSON snippets are illustrative placeholders only. They do not represent real experimental results, unpublished research outputs, client results, or institution-specific model performance.
+
 **Example global metrics structure:**
 
 ```json
@@ -345,11 +355,11 @@ outputs/
   "model": "trained_model.pt",
   "dataset": "drone_dataset_v1",
   "metrics": {
-    "AP50": 0.82,
-    "AP50_95": 0.57,
-    "precision": 0.79,
-    "recall": 0.75,
-    "f1_score": 0.77
+    "AP50": "ILLUSTRATIVE_VALUE",
+    "AP50_95": "ILLUSTRATIVE_VALUE",
+    "precision": "ILLUSTRATIVE_VALUE",
+    "recall": "ILLUSTRATIVE_VALUE",
+    "f1_score": "ILLUSTRATIVE_VALUE"
   }
 }
 ```
@@ -359,16 +369,26 @@ outputs/
 ```json
 {
   "class_name": {
-    "AP50": 0.84,
-    "AP50_95": 0.61,
-    "precision": 0.80,
-    "recall": 0.78,
-    "f1_score": 0.79
+    "AP50": "ILLUSTRATIVE_VALUE",
+    "AP50_95": "ILLUSTRATIVE_VALUE",
+    "precision": "ILLUSTRATIVE_VALUE",
+    "recall": "ILLUSTRATIVE_VALUE",
+    "f1_score": "ILLUSTRATIVE_VALUE"
   }
 }
 ```
 
 ---
+
+### Public-Safe Metric Representation
+
+In the public portfolio version, example metrics may be represented as placeholders such as:
+
+```text
+ILLUSTRATIVE_VALUE
+```
+
+This prevents accidental disclosure or misinterpretation of internal or unpublished experimental results while preserving the expected schema.
 
 ## Validation Checks Before Evaluation
 

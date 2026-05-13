@@ -1,5 +1,13 @@
 # 🎥 YOLO Video Inference & Object Tracking Processor
 
+## 🔒 Public-Safe Documentation Notice
+
+This document is part of a generalized and anonymized portfolio version of an agricultural computer vision system.
+
+It does **not** include private datasets, client or institutional names, real field coordinates, proprietary model weights, production credentials, unpublished experimental results, internal reports, or operational deployment details.
+
+All project names, dataset names, paths, metric values, coordinates, and identifiers shown here are illustrative, anonymized, or generalized for technical documentation purposes.
+
 > **Purpose:** Process videos with YOLO object tracking, preserve temporal object identity, generate annotated video outputs, compute unique object counts by class, and export frame-level or run-level metadata for downstream review.
 
 ---

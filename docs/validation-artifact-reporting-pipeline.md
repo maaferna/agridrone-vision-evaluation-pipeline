@@ -1,5 +1,13 @@
 # 📝 Validation Artifact Linking and Documentation Rendering Pipeline
 
+## 🔒 Public-Safe Documentation Notice
+
+This document is part of a generalized and anonymized portfolio version of an agricultural computer vision system.
+
+It does **not** include private datasets, client or institutional names, real field coordinates, proprietary model weights, production credentials, unpublished experimental results, internal reports, or operational deployment details.
+
+All project names, dataset names, paths, metric values, coordinates, and identifiers shown here are illustrative, anonymized, or generalized for technical documentation purposes.
+
 > **Purpose:** Supports reproducible documentation by linking YOLO validation artifacts into Markdown reports and optionally rendering PDF outputs.
 
 ---

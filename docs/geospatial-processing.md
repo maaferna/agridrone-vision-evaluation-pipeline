@@ -1,5 +1,13 @@
 # 🌍 Geospatial Processing
 
+## 🔒 Public-Safe Documentation Notice
+
+This document is part of a generalized and anonymized portfolio version of an agricultural computer vision system.
+
+It does **not** include private datasets, client or institutional names, real field coordinates, proprietary model weights, production credentials, unpublished experimental results, internal reports, or operational deployment details.
+
+All project names, dataset names, paths, metric values, coordinates, and identifiers shown here are illustrative, anonymized, or generalized for technical documentation purposes.
+
 ## 🌟 Overview
 
 The **AgriDrone Vision Evaluation Pipeline** includes a geospatial processing layer that enriches computer vision results with spatial metadata extracted from drone imagery. This layer allows detection outputs to be used in GIS workflows, spatial analysis, field inspection, and precision agriculture reporting.
@@ -283,8 +291,8 @@ Per-image metadata JSON stores structured metadata for traceability.
   "width": 3840,
   "height": 2160,
   "gps": {
-    "latitude": -33.12345,
-    "longitude": -70.12345
+    "latitude": "ANONYMIZED_LATITUDE",
+    "longitude": "ANONYMIZED_LONGITUDE"
   },
   "utm": {
     "easting": 394000.12,
@@ -333,7 +341,7 @@ GeoJSON supports map-based visualization and GIS workflows.
   "type": "Feature",
   "geometry": {
     "type": "Point",
-    "coordinates": [-70.12345, -33.12345]
+    "coordinates": ["ANONYMIZED_LONGITUDE", "ANONYMIZED_LATITUDE"]
   },
   "properties": {
     "image_name": "image_001.jpg",
@@ -455,11 +463,6 @@ outputs/
     detections.shx
     detections.dbf
     detections.prj
-
-  rasters/
-    image_001-styled.jpg
-    image_001-styled.jgw
-    image_001-styled.tif
 ```
 
 ---
@@ -491,171 +494,24 @@ A run-level geospatial manifest can improve traceability.
 
 ---
 
-## 🧾 HEIC / HEIF Metadata Extraction
+## 🔐 Geospatial Confidentiality Controls
 
-Some drone image workflows may include HEIC or HEIF images. Metadata extraction for these formats can require a fallback chain because support differs across libraries.
+Geospatial outputs can reveal sensitive field locations even when images or code are not published.
 
-Recommended extraction strategy:
-
-```text
-1. ExifTool, when installed
-2. pillow-heif metadata access
-3. PIL / ExifTags fallback when supported
-```
-
-Recommended output fields:
+The public version must not include:
 
 ```text
-metadata_extraction_strategy
-metadata_extraction_status
-metadata_extraction_error
+real coordinates
+real shapefiles
+real GeoJSON files
+real JGW world files
+real GeoTIFF rasters
+private field names
+flight paths
+farm or station identifiers
 ```
 
-Important caution:
-
-```text
-Dataset-specific hemisphere defaults such as S/W should be treated as configuration, not global assumptions.
-```
-
-If GPS reference fields are missing, the pipeline should avoid silently applying geographic defaults unless they are explicitly configured for the project.
-
----
-
-## 🗺️ Raster Georeferencing for Styled Images
-
-In addition to vector outputs such as GeoJSON, CSV, and Shapefile, the pipeline may generate georeferenced styled raster images.
-
-This is necessary because a styled JPEG with copied EXIF GPS metadata is not automatically interpreted by QGIS as a georeferenced raster.
-
-Recommended artifact pair:
-
-```text
-image-styled.jpg
-image-styled.jgw
-```
-
-The `.jgw` file stores the affine transform used by GIS software to position the JPEG.
-
-World-file parameters:
-
-```text
-A = pixel size in x direction
-D = rotation about y axis
-B = rotation about x axis
-E = pixel size in y direction, usually negative
-C = x coordinate of center of upper-left pixel
-F = y coordinate of center of upper-left pixel
-```
-
-Important constraint:
-
-```text
-World files do not store CRS.
-```
-
-Therefore, each raster-georeferenced output should include sidecar metadata documenting:
-
-```text
-crs
-world_file_units
-pixel_size_x
-pixel_size_y
-rotation_source
-transform_origin
-altitude_source
-fov_source
-```
-
-Recommended detailed document:
-
-```text
-docs/raster-georeferencing-qgis-automation-pipeline.md
-```
-
----
-
-## 🧾 EXIF/XMP Preservation
-
-The pipeline may preserve metadata in styled images by copying complete EXIF/XMP metadata from the source image using ExifTool.
-
-Representative behavior:
-
-```text
-copy_exif_metadata()
-exiftool -all:all source.jpg styled.jpg
-```
-
-This preserves original camera, GPS, timestamp, and orientation metadata in the derived visual artifact.
-
-Important distinction:
-
-```text
-Copying EXIF/XMP preserves metadata, but it does not replace raster georeferencing.
-```
-
-QGIS raster placement should rely on `.jgw` or GeoTIFF georeferencing.
-
----
-
-## 🧭 GPS Metadata Completeness
-
-GPS parsing should validate not only latitude and longitude, but also supporting fields when available.
-
-Recommended fields:
-
-```text
-GPSLatitude
-GPSLongitude
-GPSLatitudeRef
-GPSLongitudeRef
-GPSAltitude
-GPSImgDirection
-GPSVersionID
-GPSStatus
-```
-
-The pipeline may extract GPS in DMS format, convert it to decimal degrees, and then convert decimal coordinates to UTM.
-
----
-
-## 🛰️ Optional GeoTIFF Fallback
-
-If JPEG + JGW is insufficient for GIS interoperability, the pipeline may generate GeoTIFF outputs using GDAL.
-
-Recommended use cases:
-
-- QGIS does not apply `.jgw` as expected.
-- `gdalbuildvrt` ignores JPEG files due to missing georeferencing.
-- A single self-contained raster artifact is preferred.
-- Long-term GIS archival is required.
-
----
-
-## 🧰 PyQGIS Batch Loading
-
-A PyQGIS script can automate loading georeferenced styled rasters into QGIS.
-
-Important behavior:
-
-```text
-Load only .jpg or .tif raster files.
-Do not load .jgw files directly.
-QGIS applies .jgw implicitly when it shares the raster basename.
-```
-
-This eliminates manual loading steps after inference and post-processing.
-
----
-
-## ⚠️ Known GIS Integration Failure Modes
-
-| Failure | Cause | Resolution |
-|---|---|---|
-| ImportPhotos reports unsupported data source | Generated styled image is not accepted by that workflow | Use PyQGIS raster loading |
-| `gdalbuildvrt` ignores JPEG | Raster lacks geotransform | Generate `.jgw` or GeoTIFF |
-| EXIF GPS copied but raster does not move in QGIS | EXIF GPS is metadata, not geotransform | Generate world file or GeoTIFF |
-| Raster appears shifted | CRS, FOV, altitude, or transform origin is approximate | Persist assumptions and validate placement |
-| `.jgw` loaded as invalid layer | World file was loaded directly | Load the `.jpg` or `.tif` instead |
+When examples are required, use anonymized placeholders or synthetic coordinates that cannot identify a real location.
 
 ## ⬆️ Recommended Improvements
 

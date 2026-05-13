@@ -1,5 +1,13 @@
 # 🌍 Georeferenced Detection & Shapefile Generation Pipeline
 
+## 🔒 Public-Safe Documentation Notice
+
+This document is part of a generalized and anonymized portfolio version of an agricultural computer vision system.
+
+It does **not** include private datasets, client or institutional names, real field coordinates, proprietary model weights, production credentials, unpublished experimental results, internal reports, or operational deployment details.
+
+All project names, dataset names, paths, metric values, coordinates, and identifiers shown here are illustrative, anonymized, or generalized for technical documentation purposes.
+
 > From high-resolution drone-image inference to GIS-ready spatial outputs for agricultural computer vision workflows.
 
 ---
@@ -58,35 +66,6 @@ Recommended upstream document:
 
 ```text
 docs/yolo-sahi-inference-geospatial-export-pipeline.md
-```
-
-## 🗺️ Relationship to Raster Georeferencing
-
-This shapefile-focused pipeline produces vector spatial features from detections.
-
-A complementary raster workflow can also georeference the styled detection image itself:
-
-```text
-styled image + EXIF/XMP copy + .jgw world file
-```
-
-or:
-
-```text
-styled image converted to GeoTIFF
-```
-
-The two workflows serve different GIS needs:
-
-| Workflow | Output Type | Purpose |
-|---|---|---|
-| Shapefile / GeoJSON export | Vector features | Analyze detections as points, polygons, attributes |
-| Raster georeferencing | Raster image layer | Visually overlay annotated detection imagery in QGIS |
-
-Recommended complementary document:
-
-```text
-docs/raster-georeferencing-qgis-automation-pipeline.md
 ```
 
 ---
@@ -313,8 +292,8 @@ Example metadata structure:
   "filename": "image_001.jpg",
   "width": 3840,
   "height": 2160,
-  "latitude": -33.12345,
-  "longitude": -70.12345,
+  "latitude": "ANONYMIZED_LATITUDE",
+  "longitude": "ANONYMIZED_LONGITUDE",
   "altitude": 120.5,
   "timestamp": "2026-04-12T10:35:21Z"
 }
@@ -479,8 +458,8 @@ Important metadata fields:
 
 ```json
 {
-  "latitude": -33.12345,
-  "longitude": -70.12345,
+  "latitude": "ANONYMIZED_LATITUDE",
+  "longitude": "ANONYMIZED_LONGITUDE",
   "altitude": 120.5,
   "camera_heading": 92.0,
   "timestamp": "2026-04-12T10:35:21Z"
@@ -519,8 +498,8 @@ Example spatial feature attributes:
   "class_name": "weed",
   "confidence": 0.87,
   "pixel_bbox": [1250, 730, 1325, 805],
-  "utm_x": 352411.42,
-  "utm_y": 6321820.11,
+  "utm_x": "ANONYMIZED_UTM_X",
+  "utm_y": "ANONYMIZED_UTM_Y",
   "crs": "EPSG:32719"
 }
 ```
@@ -549,7 +528,7 @@ Example:
   "type": "Feature",
   "geometry": {
     "type": "Point",
-    "coordinates": [-70.12345, -33.12345]
+    "coordinates": ["ANONYMIZED_LONGITUDE", "ANONYMIZED_LATITUDE"]
   },
   "properties": {
     "class_name": "weed",
@@ -1143,3 +1122,22 @@ It does not expose:
 - Sensitive geospatial coordinates
 
 Any sample data included in a public repository should be anonymized, synthetic, or publicly shareable.
+
+## 🔐 Geospatial Confidentiality Controls
+
+Geospatial outputs can reveal sensitive field locations even when images or code are not published.
+
+The public version must not include:
+
+```text
+real coordinates
+real shapefiles
+real GeoJSON files
+real JGW world files
+real GeoTIFF rasters
+private field names
+flight paths
+farm or station identifiers
+```
+
+When examples are required, use anonymized placeholders or synthetic coordinates that cannot identify a real location.

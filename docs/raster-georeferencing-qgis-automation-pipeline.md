@@ -1,5 +1,13 @@
 # 🗺️ Raster Georeferencing and QGIS Automation Pipeline
 
+## 🔒 Public-Safe Documentation Notice
+
+This document is part of a generalized and anonymized portfolio version of an agricultural computer vision system.
+
+It does **not** include private datasets, client or institutional names, real field coordinates, proprietary model weights, production credentials, unpublished experimental results, internal reports, or operational deployment details.
+
+All project names, dataset names, paths, metric values, coordinates, and identifiers shown here are illustrative, anonymized, or generalized for technical documentation purposes.
+
 > **Purpose:** Convert styled YOLO/SAHI detection images into georeferenced raster artifacts that can be loaded automatically in QGIS, while preserving EXIF/XMP metadata and generating world files or GeoTIFF fallbacks.
 
 ---
@@ -421,8 +429,8 @@ Each georeferenced raster output should include sidecar metadata:
     "pixel_size_y": -0.045,
     "rotation_x": 0.0,
     "rotation_y": 0.0,
-    "top_left_x": 352411.42,
-    "top_left_y": 6321820.11,
+    "top_left_x": "ANONYMIZED_TOP_LEFT_X",
+    "top_left_y": "ANONYMIZED_TOP_LEFT_Y",
     "units": "meters",
     "crs": "EPSG:32719",
     "rotation_source": "GPSImgDirection"
@@ -435,6 +443,25 @@ Each georeferenced raster output should include sidecar metadata:
 ```
 
 ---
+
+## 🔐 Geospatial Confidentiality Controls
+
+Geospatial outputs can reveal sensitive field locations even when images or code are not published.
+
+The public version must not include:
+
+```text
+real coordinates
+real shapefiles
+real GeoJSON files
+real JGW world files
+real GeoTIFF rasters
+private field names
+flight paths
+farm or station identifiers
+```
+
+When examples are required, use anonymized placeholders or synthetic coordinates that cannot identify a real location.
 
 ## 🚨 Risks
 

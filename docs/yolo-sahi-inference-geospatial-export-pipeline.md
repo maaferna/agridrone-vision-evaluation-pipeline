@@ -1,5 +1,13 @@
 # 🔍 YOLO / SAHI Inference and Geospatial Export Pipeline
 
+## 🔒 Public-Safe Documentation Notice
+
+This document is part of a generalized and anonymized portfolio version of an agricultural computer vision system.
+
+It does **not** include private datasets, client or institutional names, real field coordinates, proprietary model weights, production credentials, unpublished experimental results, internal reports, or operational deployment details.
+
+All project names, dataset names, paths, metric values, coordinates, and identifiers shown here are illustrative, anonymized, or generalized for technical documentation purposes.
+
 > **Purpose:** Execute direct YOLO or SAHI inference on high-resolution agricultural drone imagery, generate styled detection outputs, enrich predictions with EXIF/GPS metadata, and export JSON, CSV, GeoJSON, and QGIS-compatible artifacts.
 
 ---
@@ -313,10 +321,10 @@ Per-image JSON outputs may include:
     }
   ],
   "metadata": {
-    "latitude": -33.12345,
-    "longitude": -70.12345,
-    "utm_easting": 394000.12,
-    "utm_northing": 6330000.45
+    "latitude": "ANONYMIZED_LATITUDE",
+    "longitude": "ANONYMIZED_LONGITUDE",
+    "utm_easting": "ANONYMIZED_UTM_EASTING",
+    "utm_northing": "ANONYMIZED_UTM_NORTHING"
   }
 }
 ```
@@ -468,6 +476,33 @@ Recommended detailed document:
 
 ```text
 docs/raster-georeferencing-qgis-automation-pipeline.md
+```
+
+## 🔐 Public-Safe Geospatial Examples
+
+All geospatial examples in this document use anonymized placeholders.
+
+Do not publish:
+
+```text
+real latitude / longitude
+real UTM easting / northing
+real GeoJSON coordinates
+real shapefiles
+real JGW / GeoTIFF outputs
+private field names
+private flight paths
+```
+
+Use placeholders such as:
+
+```json
+{
+  "latitude": "ANONYMIZED_LATITUDE",
+  "longitude": "ANONYMIZED_LONGITUDE",
+  "utm_easting": "ANONYMIZED_UTM_EASTING",
+  "utm_northing": "ANONYMIZED_UTM_NORTHING"
+}
 ```
 
 ## 🧩 Participating Components
